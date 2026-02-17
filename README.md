@@ -32,7 +32,7 @@
 ## Установка
 
 1. Установите Tampermonkey или Violentmonkey.
-2. Импортируйте `hdrezka-loader.user.js`.
+2. Установите скрипт по ссылке: [HDRezka Enhanced Loader](https://raw.githubusercontent.com/EnterBrain/hdrezka_enhanced/main/hdrezka-loader.user.js).
 3. Откройте сайт HDRezka или зеркало.
 4. При необходимости добавьте личное зеркало через меню расширения.
 
