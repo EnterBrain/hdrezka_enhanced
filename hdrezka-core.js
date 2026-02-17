@@ -805,7 +805,29 @@
 
     `;
     
-    GM_addStyle(styles);
+    function applyCoreStyles(cssText) {
+        if (!cssText) {
+            return;
+        }
+
+        if (typeof GM_addStyle === 'function') {
+            GM_addStyle(cssText);
+            return;
+        }
+
+        const fallbackStyleId = 'hdw-core-style-fallback';
+        if (document.getElementById(fallbackStyleId)) {
+            return;
+        }
+
+        const styleEl = document.createElement('style');
+        styleEl.id = fallbackStyleId;
+        styleEl.type = 'text/css';
+        styleEl.textContent = cssText;
+        (document.head || document.documentElement).appendChild(styleEl);
+    }
+
+    applyCoreStyles(styles);
 
     // Хранилище данных
     class StorageManager {

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HDRezka Enhanced
 // @namespace    http://tampermonkey.net/
-// @version      0.1.1
+// @version      0.1.2
 // @description  Улучшение пользовательского опыта на HDRezka: закладки, прогресс и UX-улучшения интерфейса
 // @author       EnterBrain42
 // @match        *://*/*
@@ -12,7 +12,7 @@
 // @grant        GM_registerMenuCommand
 // @grant        GM_getResourceText
 // @grant        GM_addStyle
-// @resource     hdrezka_core https://raw.githubusercontent.com/EnterBrain/hdrezka_enhanced/main/hdrezka-core.js
+// @resource     hdrezka_core https://raw.githubusercontent.com/EnterBrain/hdrezka_enhanced/main/hdrezka-core.js?v=20260217-2
 // @run-at       document-idle
 // @license      MIT
 // ==/UserScript==
