@@ -7,8 +7,11 @@
 // @match        *://*/*
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @grant        GM_deleteValue
+// @grant        GM_listValues
 // @grant        GM_registerMenuCommand
 // @grant        GM_getResourceText
+// @grant        GM_addStyle
 // @resource     hdrezka_core https://raw.githubusercontent.com/EnterBrain/hdrezka_enhanced/main/hdrezka-core.js
 // @run-at       document-idle
 // @license      MIT
@@ -223,7 +226,22 @@
         }
 
         try {
-            new Function(`${coreCode}\n//# sourceURL=hdrezka-core.js`)();
+            const gmApi = {
+                GM_addStyle: typeof GM_addStyle === 'function' ? GM_addStyle : null,
+                GM_getValue: typeof GM_getValue === 'function' ? GM_getValue : null,
+                GM_setValue: typeof GM_setValue === 'function' ? GM_setValue : null,
+                GM_listValues: typeof GM_listValues === 'function' ? GM_listValues : null,
+                GM_deleteValue: typeof GM_deleteValue === 'function' ? GM_deleteValue : null
+            };
+
+            new Function(
+                'gmApi',
+                `
+                const { GM_addStyle, GM_getValue, GM_setValue, GM_listValues, GM_deleteValue } = gmApi;
+                ${coreCode}
+                //# sourceURL=hdrezka-core.js
+                `
+            )(gmApi);
             const bootstrap = (typeof globalThis !== 'undefined' ? globalThis.__HDREZKA_CORE__ : null)
                 || window.__HDREZKA_CORE__
                 || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.__HDREZKA_CORE__ : null);
