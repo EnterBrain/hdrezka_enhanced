@@ -12,14 +12,6 @@
   - загружает и запускает core через `@resource`
 - `hdrezka-core.js` — основной код функциональности (закладки, прогресс, UI).
 
-## Важно про `@resource`
-
-В `hdrezka-loader.user.js` указан URL для `@resource hdrezka_core`:
-
-- `https://raw.githubusercontent.com/EnterBrain/hdrezka_enhanced/main/hdrezka-core.js`
-
-Если у вас другой репозиторий или ветка, обновите этот URL перед установкой loader-скрипта.
-
 ## Меню расширения
 
 В меню userscript доступны команды:
@@ -31,7 +23,13 @@
 
 ## Установка
 
-1. Установите Tampermonkey или Violentmonkey.
+1. Установите одно из расширений:
+   - Tampermonkey:
+     - Google Chrome: [Chrome Web Store](https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo)
+     - Firefox: [Mozilla Add-ons](https://addons.mozilla.org/firefox/addon/tampermonkey/)
+   - Violentmonkey:
+     - Google Chrome: [Chrome Web Store](https://chromewebstore.google.com/detail/violentmonkey/jinjaccalgkegednnccohejagnlnfdag)
+     - Firefox: [Mozilla Add-ons](https://addons.mozilla.org/firefox/addon/violentmonkey/)
 2. Установите скрипт по ссылке: [HDRezka Enhanced Loader](https://raw.githubusercontent.com/EnterBrain/hdrezka_enhanced/main/hdrezka-loader.user.js).
 3. Откройте сайт HDRezka или зеркало.
 4. При необходимости добавьте личное зеркало через меню расширения.
