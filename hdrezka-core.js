@@ -704,6 +704,10 @@
             height: 100% !important;
         }
 
+        body.hdw-theater-mode .hdw-theater-player-block > #player > #user-network-issues {
+            display: none !important;
+        }
+
         .b-player__restricted {
             height: 540px !important;
             width: 960px !important;
@@ -1568,6 +1572,10 @@
                 const innerHolder = playerInner.parentElement;
                 Array.from(playerRoot.children).forEach((child) => {
                     if (child === playerInner || child === innerHolder) {
+                        return;
+                    }
+
+                    if (child.id === 'user-network-issues') {
                         return;
                     }
 
