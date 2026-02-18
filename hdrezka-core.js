@@ -1825,9 +1825,8 @@
             this.enabled = GM_getValue(storageKey, false);
             this.runtimeActive = false;
             this.currentVideo = null;
-            this.videoEvents = null;
-            this.overlayRaf = null;
             this.videoScanInterval = null;
+            this.overlayUpdateInterval = null;
             this.overlay = null;
             this.titleNode = null;
             this.timeNode = null;
@@ -1839,7 +1838,7 @@
         init() {
             if (this.initialized) {
                 this.updateButtonState();
-                this.scheduleOverlayUpdate();
+                this.updateOverlay();
                 return;
             }
 
@@ -1861,32 +1860,23 @@
             this.ensureVisibilityListener();
             this.ensureForCurrentVideo();
             this.startVideoScan();
-            this.scheduleOverlayUpdate();
+            this.startOverlayUpdates();
+            this.updateOverlay();
         }
 
         stopRuntime() {
             this.runtimeActive = false;
 
-            if (this.videoEvents) {
-                const { video, handler } = this.videoEvents;
-                video.removeEventListener('play', handler);
-                video.removeEventListener('pause', handler);
-                video.removeEventListener('timeupdate', handler);
-                video.removeEventListener('loadedmetadata', handler);
-                video.removeEventListener('ended', handler);
-                this.videoEvents = null;
-            }
-
             this.currentVideo = null;
-
-            if (this.overlayRaf) {
-                cancelAnimationFrame(this.overlayRaf);
-                this.overlayRaf = null;
-            }
 
             if (this.videoScanInterval) {
                 clearInterval(this.videoScanInterval);
                 this.videoScanInterval = null;
+            }
+
+            if (this.overlayUpdateInterval) {
+                clearInterval(this.overlayUpdateInterval);
+                this.overlayUpdateInterval = null;
             }
 
             if (this.fullscreenHandler) {
@@ -1934,7 +1924,7 @@
 
                 const videoChanged = this.ensureForCurrentVideo();
                 if (videoChanged) {
-                    this.scheduleOverlayUpdate();
+                    this.updateOverlay();
                 }
             }, 1500);
         }
@@ -1960,35 +1950,39 @@
 
                 if (document.hidden) {
                     this.stopVideoScan();
-                    if (this.overlayRaf) {
-                        cancelAnimationFrame(this.overlayRaf);
-                        this.overlayRaf = null;
-                    }
+                    this.stopOverlayUpdates();
                     this.setOverlayVisible(false);
                     return;
                 }
 
                 this.ensureForCurrentVideo();
                 this.startVideoScan();
-                this.scheduleOverlayUpdate();
+                this.startOverlayUpdates();
+                this.updateOverlay();
             };
 
             document.addEventListener('visibilitychange', this.visibilityHandler);
         }
 
-        scheduleOverlayUpdate() {
-            if (!this.runtimeActive || document.hidden) {
+        startOverlayUpdates() {
+            if (this.overlayUpdateInterval) {
                 return;
             }
 
-            if (this.overlayRaf) {
-                return;
-            }
-
-            this.overlayRaf = requestAnimationFrame(() => {
-                this.overlayRaf = null;
+            this.overlayUpdateInterval = setInterval(() => {
+                if (!this.runtimeActive || document.hidden) {
+                    return;
+                }
                 this.updateOverlay();
-            });
+            }, 1000);
+        }
+
+        stopOverlayUpdates() {
+            if (!this.overlayUpdateInterval) {
+                return;
+            }
+            clearInterval(this.overlayUpdateInterval);
+            this.overlayUpdateInterval = null;
         }
 
         getCurrentVideoElement() {
@@ -2027,7 +2021,7 @@
 
             this.fullscreenHandler = () => {
                 this.ensureOverlayRoot();
-                this.scheduleOverlayUpdate();
+                this.updateOverlay();
             };
             document.addEventListener('fullscreenchange', this.fullscreenHandler);
             document.addEventListener('webkitfullscreenchange', this.fullscreenHandler);
@@ -2070,68 +2064,9 @@
                 return false;
             }
 
-            if (this.videoEvents) {
-                const { video: prevVideo, handler } = this.videoEvents;
-                prevVideo.removeEventListener('play', handler);
-                prevVideo.removeEventListener('pause', handler);
-                prevVideo.removeEventListener('timeupdate', handler);
-                prevVideo.removeEventListener('loadedmetadata', handler);
-                prevVideo.removeEventListener('ended', handler);
-            }
-
             this.currentVideo = video;
             this.ensureOverlayRoot();
-
-            if (!video) {
-                this.videoEvents = null;
-                return true;
-            }
-
-            const handler = () => this.scheduleOverlayUpdate();
-            video.addEventListener('play', handler);
-            video.addEventListener('pause', handler);
-            video.addEventListener('timeupdate', handler);
-            video.addEventListener('loadedmetadata', handler);
-            video.addEventListener('ended', handler);
-            this.videoEvents = { video, handler };
             return true;
-        }
-
-        elementIsVisible(el) {
-            if (!el) {
-                return false;
-            }
-
-            const style = window.getComputedStyle(el);
-            if (style.display === 'none' || style.visibility === 'hidden') {
-                return false;
-            }
-            if ((parseFloat(style.opacity || '1') || 0) < 0.08) {
-                return false;
-            }
-
-            const rect = el.getBoundingClientRect();
-            return rect.width > 2 && rect.height > 2;
-        }
-
-        isControlsHidden() {
-            const root = this.getPlayerRoot();
-            if (!root) {
-                return false;
-            }
-
-            const candidates = [
-                ...root.querySelectorAll('#cdnplayer_control_timeline'),
-                ...root.querySelectorAll('[id$="control_timeline"]'),
-                ...root.querySelectorAll('[id*="control_timeline"]'),
-                ...root.querySelectorAll('[id*="control_cc"]')
-            ];
-
-            if (!candidates.length) {
-                return false;
-            }
-
-            return !candidates.some((el) => this.elementIsVisible(el));
         }
 
         formatPlaybackTime(rawSeconds) {
@@ -2205,15 +2140,9 @@
             }
 
             const video = this.currentVideo;
-            const canShow = !!video && this.enabled && !video.paused && !video.ended && this.isControlsHidden();
-            if (!canShow) {
-                this.setOverlayVisible(false);
-                return;
-            }
-
             this.titleNode.textContent = this.buildHeaderText();
             this.timeNode.textContent = this.buildTimeText(video);
-            this.setOverlayVisible(true);
+            this.setOverlayVisible(this.enabled);
         }
 
         buildButtonTitle() {
