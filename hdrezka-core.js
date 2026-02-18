@@ -640,6 +640,63 @@
             color: #fff;
         }
 
+        #video-blur-toggle-btn,
+        #video-mirror-toggle-btn {
+            background: #2d2d2d;
+            color: #a5a5a5;
+            border: 0;
+            border-radius: 4px;
+            transition: background-color .2s linear, color .2s linear, box-shadow .2s linear, filter .2s linear;
+            height: 38px;
+            margin: 0;
+            outline: 0;
+            width: 46px;
+            font-size: 0;
+            cursor: pointer;
+            line-height: normal !important;
+        }
+
+        #video-blur-toggle-btn::before {
+            content: 'Р';
+            display: block;
+            font-size: 17px;
+            font-weight: 700;
+            line-height: 38px;
+            text-align: center;
+        }
+
+        #video-mirror-toggle-btn::before {
+            content: 'З';
+            display: block;
+            font-size: 17px;
+            font-weight: 700;
+            line-height: 38px;
+            text-align: center;
+        }
+
+        #video-blur-toggle-btn:hover,
+        #video-mirror-toggle-btn:hover {
+            background: #414141;
+            color: #fff;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+            filter: saturate(1.2);
+        }
+
+        #video-blur-toggle-btn.hdw-active,
+        #video-mirror-toggle-btn.hdw-active {
+            background: #1f618d;
+            color: #fff;
+        }
+
+        .hdw-video-blur {
+            filter: blur(50px) !important;
+        }
+
+        .hdw-video-mirror {
+            transform: scaleX(-1) !important;
+            transform-origin: center !important;
+        }
+
         body.hdw-theater-mode {
             overflow: hidden !important;
             --hdw-top-offset: 10px;
@@ -1216,7 +1273,9 @@
 
     const HOTKEYS = Object.freeze({
         theater: { code: 'KeyT', label: 'Alt+T' },
-        compressor: { code: 'KeyC', label: 'Alt+C' }
+        compressor: { code: 'KeyC', label: 'Alt+C' },
+        blur: { code: 'KeyB', label: 'Alt+B' },
+        mirror: { code: 'KeyM', label: 'Alt+M' }
     });
 
     function isAltHotkey(event, code) {
@@ -1469,9 +1528,134 @@
         }
     }
 
+    class VideoEffectsModule {
+        constructor() {
+            this.blurEnabled = false;
+            this.mirrorEnabled = false;
+            this.currentTarget = null;
+            this.observer = null;
+            this.initialized = false;
+        }
+
+        init() {
+            if (this.initialized) {
+                this.updateButtonsState();
+                return;
+            }
+
+            this.initialized = true;
+            this.addButtons();
+            this.ensureMediaObserver();
+            this.ensureForCurrentTarget();
+            this.updateButtonsState();
+        }
+
+        addButtons() {
+            const panelButtons = ensurePlayerControlsPanel();
+            if (!panelButtons) {
+                return;
+            }
+
+            if (!document.getElementById('video-mirror-toggle-btn')) {
+                const mirrorButton = document.createElement('button');
+                mirrorButton.id = 'video-mirror-toggle-btn';
+                mirrorButton.type = 'button';
+                mirrorButton.addEventListener('click', () => this.toggleMirror());
+                panelButtons.insertBefore(mirrorButton, panelButtons.firstChild);
+            }
+
+            if (!document.getElementById('video-blur-toggle-btn')) {
+                const blurButton = document.createElement('button');
+                blurButton.id = 'video-blur-toggle-btn';
+                blurButton.type = 'button';
+                blurButton.addEventListener('click', () => this.toggleBlur());
+                panelButtons.insertBefore(blurButton, panelButtons.firstChild);
+            }
+        }
+
+        ensureMediaObserver() {
+            if (this.observer) {
+                return;
+            }
+
+            const root = document.getElementById('player') || document.body;
+            this.observer = new MutationObserver(() => this.ensureForCurrentTarget());
+            this.observer.observe(root, {
+                childList: true,
+                subtree: true
+            });
+        }
+
+        getCurrentTargetElement() {
+            return document.querySelector('#cdnplayer video, #ownplayer video, video')
+                || document.querySelector('#ownplayer > #videoplayer > iframe, #cdnplayer iframe');
+        }
+
+        ensureForCurrentTarget() {
+            const target = this.getCurrentTargetElement();
+            if (target === this.currentTarget) {
+                return;
+            }
+
+            if (this.currentTarget) {
+                this.currentTarget.classList.remove('hdw-video-blur');
+                this.currentTarget.classList.remove('hdw-video-mirror');
+            }
+
+            this.currentTarget = target;
+            this.applyCurrentState();
+        }
+
+        applyCurrentState() {
+            if (!this.currentTarget) {
+                return;
+            }
+
+            this.currentTarget.classList.toggle('hdw-video-blur', this.blurEnabled);
+            this.currentTarget.classList.toggle('hdw-video-mirror', this.mirrorEnabled);
+        }
+
+        toggleBlur() {
+            this.blurEnabled = !this.blurEnabled;
+            this.ensureForCurrentTarget();
+            this.applyCurrentState();
+            this.updateButtonsState();
+        }
+
+        toggleMirror() {
+            this.mirrorEnabled = !this.mirrorEnabled;
+            this.ensureForCurrentTarget();
+            this.applyCurrentState();
+            this.updateButtonsState();
+        }
+
+        buildBlurTitle() {
+            return `Размытие: ${this.blurEnabled ? 'Вкл' : 'Выкл'} (${HOTKEYS.blur.label})`;
+        }
+
+        buildMirrorTitle() {
+            return `Зеркало: ${this.mirrorEnabled ? 'Вкл' : 'Выкл'} (${HOTKEYS.mirror.label})`;
+        }
+
+        updateButtonsState() {
+            const blurButton = document.getElementById('video-blur-toggle-btn');
+            if (blurButton) {
+                blurButton.classList.toggle('hdw-active', this.blurEnabled);
+                blurButton.title = this.buildBlurTitle();
+            }
+
+            const mirrorButton = document.getElementById('video-mirror-toggle-btn');
+            if (mirrorButton) {
+                mirrorButton.classList.toggle('hdw-active', this.mirrorEnabled);
+                mirrorButton.title = this.buildMirrorTitle();
+            }
+        }
+    }
+
     class TheaterModeModule {
-        constructor(audioCompressor) {
+        constructor(audioCompressor, videoEffects) {
             this.audioCompressor = audioCompressor;
+            this.videoEffects = videoEffects;
             this.isActive = false;
             this.resizeHandler = null;
             this.mutationObservers = [];
@@ -1489,6 +1673,7 @@
             this.ensureBackdrop();
             this.addToggleButton();
             this.audioCompressor.init();
+            this.videoEffects.init();
             this.bindHotkeys();
             this.updateButtonState();
 
@@ -1514,6 +1699,18 @@
                 if (isAltHotkey(event, HOTKEYS.compressor.code)) {
                     event.preventDefault();
                     this.toggleAudioCompressor(true);
+                    return;
+                }
+
+                if (isAltHotkey(event, HOTKEYS.blur.code)) {
+                    event.preventDefault();
+                    this.toggleBlur();
+                    return;
+                }
+
+                if (isAltHotkey(event, HOTKEYS.mirror.code)) {
+                    event.preventDefault();
+                    this.toggleMirror();
                 }
             };
 
@@ -1730,6 +1927,14 @@
             this.audioCompressor.toggle(fromUserGesture);
         }
 
+        toggleBlur() {
+            this.videoEffects.toggleBlur();
+        }
+
+        toggleMirror() {
+            this.videoEffects.toggleMirror();
+        }
+
         updateButtonState() {
             const button = document.getElementById('theater-mode-toggle-btn');
             if (!button) {
@@ -1742,7 +1947,8 @@
     }
 
     const playerEnhancements = new TheaterModeModule(
-        new AudioCompressorModule(config.compressorStorageKey)
+        new AudioCompressorModule(config.compressorStorageKey),
+        new VideoEffectsModule()
     );
 
     // Интерфейс
