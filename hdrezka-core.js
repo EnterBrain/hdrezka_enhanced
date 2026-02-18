@@ -539,20 +539,46 @@
             box-shadow: 0 3px 6px rgba(52, 152, 219, 0.4);
         }
 
+        .hdw-player-controls-panel-wrapper {
+            margin-bottom: 20px;
+            position: relative;
+            width: 960px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        body.b-theme__template__night .hdw-player-controls-panel {
+            background: #1f1f1f;
+        }
+
+        .hdw-player-controls-panel {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #e1e289;
+            overflow: hidden;
+            min-height: 50px;
+            padding: 0 10px;
+            box-sizing: border-box;
+        }
+
+        .hdw-player-controls-panel-buttons {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
         #theater-mode-toggle-btn {
             background: #2d2d2d;
             color: #a5a5a5;
             border: 0;
-            border-radius: 0;
+            border-radius: 4px;
             transition: background-color .2s linear, color .2s linear, box-shadow .2s linear, filter .2s linear;
-            float: right;
-            height: 50px;
+            height: 38px;
             margin: 0;
-            position: absolute;
-            top: 0;
-            right: 52px;
             outline: 0;
-            width: 50px;
+            width: 46px;
             font-size: 0;
             cursor: pointer;
             line-height: normal !important;
@@ -562,7 +588,7 @@
             content: '⛶';
             display: block;
             font-size: 20px;
-            line-height: 50px;
+            line-height: 38px;
             text-align: center;
         }
 
@@ -582,16 +608,12 @@
             background: #2d2d2d;
             color: #a5a5a5;
             border: 0;
-            border-radius: 0;
+            border-radius: 4px;
             transition: background-color .2s linear, color .2s linear, box-shadow .2s linear, filter .2s linear;
-            float: right;
-            height: 50px;
+            height: 38px;
             margin: 0;
-            position: absolute;
-            top: 0;
-            right: 104px;
             outline: 0;
-            width: 50px;
+            width: 46px;
             font-size: 0;
             cursor: pointer;
             line-height: normal !important;
@@ -602,7 +624,7 @@
             display: block;
             font-size: 18px;
             font-weight: 700;
-            line-height: 50px;
+            line-height: 38px;
             text-align: center;
         }
 
@@ -624,7 +646,6 @@
             --hdw-bottom-offset: 10px;
             --hdw-gap: 0px;
             --hdw-translators-height: 52px;
-            --hdw-social-height: 50px;
             --hdw-player-available-height: 420px;
             --hdw-player-chrome-height: 48px;
             --hdw-player-box-height: 372px;
@@ -672,16 +693,13 @@
             padding-top: 0 !important;
         }
 
-        body.hdw-theater-mode .b-post__social_holder_wrapper {
-            position: fixed !important;
-            bottom: var(--hdw-bottom-offset) !important;
-            left: 50% !important;
-            transform: translateX(-50%) !important;
-            width: min(96vw, 1280px) !important;
+        body.hdw-theater-mode .hdw-player-controls-panel-wrapper {
+            position: static !important;
+            transform: none !important;
+            width: 100% !important;
+            max-width: none !important;
             margin: 0 !important;
-            z-index: 6001 !important;
-            box-sizing: border-box;
-            pointer-events: auto;
+            z-index: auto !important;
         }
 
         body.hdw-theater-mode #cdnplayer-container,
@@ -1201,6 +1219,35 @@
         return event.altKey && !event.ctrlKey && !event.shiftKey && !event.metaKey && event.code === code;
     }
 
+    function ensurePlayerControlsPanel() {
+        const existingButtons = document.querySelector('.hdw-player-controls-panel-buttons');
+        if (existingButtons) {
+            return existingButtons;
+        }
+
+        const playerContainer = document.getElementById('cdnplayer-container')
+            || document.getElementById('youtubeplayer')
+            || document.getElementById('ownplayer');
+        if (!playerContainer || !playerContainer.parentNode) {
+            return null;
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'hdw-player-controls-panel-wrapper';
+
+        const panel = document.createElement('div');
+        panel.className = 'hdw-player-controls-panel';
+
+        const buttons = document.createElement('div');
+        buttons.className = 'hdw-player-controls-panel-buttons';
+
+        panel.appendChild(buttons);
+        wrapper.appendChild(panel);
+        playerContainer.insertAdjacentElement('afterend', wrapper);
+
+        return buttons;
+    }
+
     class AudioCompressorModule {
         constructor(storageKey) {
             this.storageKey = storageKey;
@@ -1230,8 +1277,8 @@
                 return;
             }
 
-            const socialWrapper = document.querySelector('.b-post__social_holder_wrapper');
-            if (!socialWrapper) {
+            const panelButtons = ensurePlayerControlsPanel();
+            if (!panelButtons) {
                 return;
             }
 
@@ -1241,18 +1288,7 @@
             button.title = this.buildButtonTitle();
             button.addEventListener('click', () => this.toggle(true));
 
-            const theaterButton = document.getElementById('theater-mode-toggle-btn');
-            if (theaterButton && theaterButton.parentNode) {
-                theaterButton.parentNode.insertBefore(button, theaterButton);
-                return;
-            }
-
-            const issueButton = document.getElementById('send-video-issue');
-            if (issueButton && issueButton.parentNode) {
-                issueButton.parentNode.insertBefore(button, issueButton);
-            } else {
-                socialWrapper.appendChild(button);
-            }
+            panelButtons.insertBefore(button, panelButtons.firstChild);
         }
 
         ensureVideoObserver() {
@@ -1500,9 +1536,8 @@
                 return;
             }
 
-            const issueButton = document.getElementById('send-video-issue');
-            const socialWrapper = document.querySelector('.b-post__social_holder_wrapper');
-            if (!socialWrapper) {
+            const panelButtons = ensurePlayerControlsPanel();
+            if (!panelButtons) {
                 return;
             }
 
@@ -1511,11 +1546,7 @@
             button.type = 'button';
             button.addEventListener('click', () => this.toggleTheaterMode());
 
-            if (issueButton && issueButton.parentNode) {
-                issueButton.parentNode.insertBefore(button, issueButton);
-            } else {
-                socialWrapper.appendChild(button);
-            }
+            panelButtons.appendChild(button);
         }
 
         scheduleTheaterLayout() {
@@ -1540,10 +1571,9 @@
 
             const body = document.body;
             const translatorsBlock = document.querySelector('.b-translators__block');
-            const socialWrapper = document.querySelector('.b-post__social_holder_wrapper');
             const playerBlock = document.querySelector('.hdw-theater-player-block');
 
-            if (!body || !translatorsBlock || !socialWrapper || !playerBlock) {
+            if (!body || !translatorsBlock || !playerBlock) {
                 return;
             }
 
@@ -1551,10 +1581,9 @@
             const bottomOffset = 10;
             const gap = 0;
             const translatorsHeight = Math.ceil(translatorsBlock.getBoundingClientRect().height || 0);
-            const socialHeight = Math.ceil(socialWrapper.getBoundingClientRect().height || 0);
             const availableHeight = Math.max(
                 220,
-                Math.floor(window.innerHeight - topOffset - bottomOffset - translatorsHeight - socialHeight - gap * 2)
+                Math.floor(window.innerHeight - topOffset - bottomOffset - translatorsHeight - gap * 2)
             );
             const playerInner = playerBlock.querySelector('#cdnplayer-container, #youtubeplayer, #ownplayer');
             const playerRoot = playerBlock.querySelector('#player') || playerBlock;
@@ -1607,7 +1636,6 @@
             body.style.setProperty('--hdw-bottom-offset', `${bottomOffset}px`);
             body.style.setProperty('--hdw-gap', `${gap}px`);
             body.style.setProperty('--hdw-translators-height', `${translatorsHeight}px`);
-            body.style.setProperty('--hdw-social-height', `${socialHeight}px`);
             body.style.setProperty('--hdw-player-available-height', `${availableHeight}px`);
             body.style.setProperty('--hdw-player-chrome-height', `${chromeHeight}px`);
             body.style.setProperty('--hdw-player-box-height', `${playerBoxHeight}px`);
@@ -1621,8 +1649,7 @@
 
             this.unbindTheaterLayoutObservers();
             const watchNodes = [
-                document.querySelector('.b-translators__block'),
-                document.querySelector('.b-post__social_holder_wrapper')
+                document.querySelector('.b-translators__block')
             ].filter(Boolean);
 
             watchNodes.forEach((node) => {
@@ -1657,9 +1684,7 @@
         enableTheaterMode() {
             const translatorsBlock = document.querySelector('.b-translators__block');
             const playerBlock = document.querySelector('#player')?.closest('div[class^="b-post__"]');
-            const socialWrapper = document.querySelector('.b-post__social_holder_wrapper');
-
-            if (!translatorsBlock || !playerBlock || !socialWrapper) {
+            if (!translatorsBlock || !playerBlock) {
                 return;
             }
 
@@ -1683,7 +1708,6 @@
             document.body.style.removeProperty('--hdw-bottom-offset');
             document.body.style.removeProperty('--hdw-gap');
             document.body.style.removeProperty('--hdw-translators-height');
-            document.body.style.removeProperty('--hdw-social-height');
             document.body.style.removeProperty('--hdw-player-available-height');
             document.body.style.removeProperty('--hdw-player-chrome-height');
             document.body.style.removeProperty('--hdw-player-box-height');
