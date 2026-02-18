@@ -839,9 +839,9 @@
             --hdw-bottom-offset: 10px;
             --hdw-gap: 0px;
             --hdw-translators-height: 52px;
-            --hdw-player-available-height: 420px;
+            --hdw-player-available-height: calc(100vh - var(--hdw-top-offset) - var(--hdw-bottom-offset) - var(--hdw-translators-height) - var(--hdw-gap) * 2);
             --hdw-player-chrome-height: 48px;
-            --hdw-player-box-height: 372px;
+            --hdw-player-box-height: calc(var(--hdw-player-available-height) - var(--hdw-player-chrome-height));
         }
 
         #hdw-theater-backdrop {
@@ -1794,13 +1794,14 @@
             this.enabled = GM_getValue(storageKey, false);
             this.runtimeActive = false;
             this.currentVideo = null;
-            this.observer = null;
             this.videoEvents = null;
             this.overlayRaf = null;
+            this.videoScanInterval = null;
             this.overlay = null;
             this.titleNode = null;
             this.timeNode = null;
             this.fullscreenHandler = null;
+            this.visibilityHandler = null;
             this.initialized = false;
         }
 
@@ -1825,19 +1826,15 @@
             }
 
             this.runtimeActive = true;
-            this.ensurePlayerObserver();
             this.ensureFullscreenListener();
+            this.ensureVisibilityListener();
             this.ensureForCurrentVideo();
+            this.startVideoScan();
             this.scheduleOverlayUpdate();
         }
 
         stopRuntime() {
             this.runtimeActive = false;
-
-            if (this.observer) {
-                this.observer.disconnect();
-                this.observer = null;
-            }
 
             if (this.videoEvents) {
                 const { video, handler } = this.videoEvents;
@@ -1856,10 +1853,20 @@
                 this.overlayRaf = null;
             }
 
+            if (this.videoScanInterval) {
+                clearInterval(this.videoScanInterval);
+                this.videoScanInterval = null;
+            }
+
             if (this.fullscreenHandler) {
                 document.removeEventListener('fullscreenchange', this.fullscreenHandler);
                 document.removeEventListener('webkitfullscreenchange', this.fullscreenHandler);
                 this.fullscreenHandler = null;
+            }
+
+            if (this.visibilityHandler) {
+                document.removeEventListener('visibilitychange', this.visibilityHandler);
+                this.visibilityHandler = null;
             }
 
             this.setOverlayVisible(false);
@@ -1884,27 +1891,62 @@
             panelButtons.insertBefore(button, panelButtons.firstChild);
         }
 
-        ensurePlayerObserver() {
-            if (this.observer) {
+        startVideoScan() {
+            if (this.videoScanInterval) {
                 return;
             }
 
-            const root = document.getElementById('cdnplayer-container')
-                || document.getElementById('ownplayer')
-                || document.getElementById('player')
-                || document.body;
-            this.observer = new MutationObserver(() => {
+            this.videoScanInterval = setInterval(() => {
+                if (!this.runtimeActive) {
+                    return;
+                }
+
+                const videoChanged = this.ensureForCurrentVideo();
+                if (videoChanged) {
+                    this.scheduleOverlayUpdate();
+                }
+            }, 1500);
+        }
+
+        stopVideoScan() {
+            if (!this.videoScanInterval) {
+                return;
+            }
+
+            clearInterval(this.videoScanInterval);
+            this.videoScanInterval = null;
+        }
+
+        ensureVisibilityListener() {
+            if (this.visibilityHandler) {
+                return;
+            }
+
+            this.visibilityHandler = () => {
+                if (!this.runtimeActive) {
+                    return;
+                }
+
+                if (document.hidden) {
+                    this.stopVideoScan();
+                    if (this.overlayRaf) {
+                        cancelAnimationFrame(this.overlayRaf);
+                        this.overlayRaf = null;
+                    }
+                    this.setOverlayVisible(false);
+                    return;
+                }
+
                 this.ensureForCurrentVideo();
+                this.startVideoScan();
                 this.scheduleOverlayUpdate();
-            });
-            this.observer.observe(root, {
-                childList: true,
-                subtree: true
-            });
+            };
+
+            document.addEventListener('visibilitychange', this.visibilityHandler);
         }
 
         scheduleOverlayUpdate() {
-            if (!this.runtimeActive) {
+            if (!this.runtimeActive || document.hidden) {
                 return;
             }
 
@@ -1994,7 +2036,7 @@
         ensureForCurrentVideo() {
             const video = this.getCurrentVideoElement();
             if (video === this.currentVideo) {
-                return;
+                return false;
             }
 
             if (this.videoEvents) {
@@ -2011,7 +2053,7 @@
 
             if (!video) {
                 this.videoEvents = null;
-                return;
+                return true;
             }
 
             const handler = () => this.scheduleOverlayUpdate();
@@ -2021,6 +2063,7 @@
             video.addEventListener('loadedmetadata', handler);
             video.addEventListener('ended', handler);
             this.videoEvents = { video, handler };
+            return true;
         }
 
         elementIsVisible(el) {
@@ -2183,6 +2226,7 @@
             this.isExpanded = false;
             this.isTheaterMode = false;
             this.mutationObserver = null;
+            this.observerRaf = null;
         }
 
         init() {
@@ -2261,15 +2305,20 @@
             }
 
             this.mutationObserver = new MutationObserver(() => {
-                this.ensureListReference();
-                this.updateSelectedTranslatorName();
+                if (this.observerRaf) {
+                    return;
+                }
+
+                this.observerRaf = requestAnimationFrame(() => {
+                    this.observerRaf = null;
+                    this.ensureListReference();
+                    this.updateSelectedTranslatorName();
+                });
             });
 
             this.mutationObserver.observe(this.blockEl, {
                 childList: true,
-                subtree: true,
-                attributes: true,
-                attributeFilter: ['class']
+                subtree: true
             });
         }
 
@@ -2496,23 +2545,9 @@
 
             let chromeHeight = 0;
             if (playerInner && playerRoot) {
-                const innerHolder = playerInner.parentElement;
-                Array.from(playerRoot.children).forEach((child) => {
-                    if (child === playerInner || child === innerHolder) {
-                        return;
-                    }
-
-                    if (child.id === 'user-network-issues') {
-                        return;
-                    }
-
-                    const cs = window.getComputedStyle(child);
-                    if (cs.display === 'none' || cs.visibility === 'hidden') {
-                        return;
-                    }
-
-                    chromeHeight += getOuterHeight(child);
-                });
+                const rootRect = playerRoot.getBoundingClientRect();
+                const innerRect = playerInner.getBoundingClientRect();
+                chromeHeight = Math.max(0, Math.round(rootRect.height - innerRect.height));
             }
 
             Array.from(playerBlock.children).forEach((child) => {
@@ -2592,7 +2627,10 @@
             this.isActive = true;
             this.translatorsPanel?.setTheaterMode(true);
             this.bindTheaterLayoutListeners();
+            this.updateTheaterLayoutVars();
             this.scheduleTheaterLayout();
+            setTimeout(() => this.updateTheaterLayoutVars(), 0);
+            setTimeout(() => this.updateTheaterLayoutVars(), 120);
             this.updateButtonState();
         }
 
@@ -3155,6 +3193,7 @@
     class VideoTracker {
         static intervalId = null;
         static currentItemId = null;
+        static visibilityHandler = null;
         
         static init() {
             debugLog('[VideoTracker] Инициализация отслеживания видео');
@@ -3179,6 +3218,7 @@
             
             debugLog('[VideoTracker] Элемент найден:', currentItem);
             this.currentItemId = currentItem.id;
+            this.ensureVisibilityListener();
             
             // Ждем загрузки плеера
             this.waitForPlayer(() => {
@@ -3224,6 +3264,9 @@
             let attempts = 0;
             const maxAttempts = 50; // 5 секунд максимум
             const interval = setInterval(() => {
+                if (document.hidden) {
+                    return;
+                }
                 attempts++;
                 debugLog(`[VideoTracker] Попытка ${attempts} поиска плеера`);
                 const player = document.querySelector('#cdnplayer video');
@@ -3264,6 +3307,10 @@
         
         static startPeriodicUpdate() {
             debugLog('[VideoTracker] Запуск периодического обновления');
+            if (document.hidden) {
+                debugLog('[VideoTracker] Вкладка скрыта, периодическое обновление отложено');
+                return;
+            }
             // Очищаем предыдущий интервал, если есть
             if (this.intervalId) {
                 debugLog('[VideoTracker] Очистка предыдущего интервала');
@@ -3272,6 +3319,9 @@
             
             // Запускаем обновление каждые 10 секунд
             this.intervalId = setInterval(() => {
+                if (document.hidden) {
+                    return;
+                }
                 debugLog('[VideoTracker] Периодическое обновление данных');
                 // Проверяем, что плеер воспроизводится
                 const video = document.querySelector('#cdnplayer video');
@@ -3281,6 +3331,28 @@
                     debugLog('[VideoTracker] Плеер не воспроизводится, пропускаем обновление');
                 }
             }, 10000);
+        }
+
+        static ensureVisibilityListener() {
+            if (this.visibilityHandler) {
+                return;
+            }
+
+            this.visibilityHandler = () => {
+                if (document.hidden) {
+                    if (this.intervalId) {
+                        clearInterval(this.intervalId);
+                        this.intervalId = null;
+                    }
+                    return;
+                }
+
+                if (this.currentItemId) {
+                    this.startPeriodicUpdate();
+                }
+            };
+
+            document.addEventListener('visibilitychange', this.visibilityHandler);
         }
         
         static updateBookmarkData() {
