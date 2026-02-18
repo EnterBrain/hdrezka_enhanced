@@ -789,6 +789,50 @@
             transform-origin: center !important;
         }
 
+        .b-translators__title.hdw-translators-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .hdw-translators-title-main {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .hdw-translators-active-name {
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: min(60vw, 620px);
+        }
+
+        .hdw-translators-toggle-btn {
+            margin-left: auto;
+            padding: 2px 8px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+            background: rgba(0, 0, 0, 0.25);
+            color: inherit;
+            cursor: pointer;
+            line-height: 1.2;
+            font-size: 12px;
+        }
+
+        body.b-theme__template__night .hdw-translators-toggle-btn {
+            border-color: rgba(255, 255, 255, 0.35);
+            background: rgba(255, 255, 255, 0.07);
+        }
+
+        .b-translators__block.hdw-translators-collapsed #translators-list,
+        .b-translators__block.hdw-translators-collapsed .b-translators__list {
+            display: none !important;
+        }
+
         body.hdw-theater-mode {
             overflow: hidden !important;
             --hdw-top-offset: 10px;
@@ -2128,11 +2172,181 @@
         }
     }
 
+    class TranslatorsPanelModule {
+        constructor() {
+            this.initialized = false;
+            this.blockEl = null;
+            this.titleEl = null;
+            this.listEl = null;
+            this.activeNameEl = null;
+            this.toggleButtonEl = null;
+            this.isExpanded = false;
+            this.isTheaterMode = false;
+            this.mutationObserver = null;
+        }
+
+        init() {
+            if (this.initialized) {
+                return;
+            }
+
+            this.blockEl = document.querySelector('.b-translators__block');
+            this.titleEl = this.blockEl?.querySelector('.b-translators__title');
+            this.listEl = this.blockEl?.querySelector('#translators-list, .b-translators__list');
+            if (!this.blockEl || !this.titleEl || !this.listEl) {
+                return;
+            }
+
+            this.initialized = true;
+            this.enhanceTitle();
+            this.bindEvents();
+            this.bindObserver();
+            this.setExpanded(false);
+        }
+
+        enhanceTitle() {
+            if (!this.titleEl || this.titleEl.dataset.hdwEnhanced === '1') {
+                return;
+            }
+
+            const titleText = this.titleEl.textContent.replace(/\s+/g, ' ').trim() || 'Озвучка:';
+            this.titleEl.classList.add('hdw-translators-title');
+            this.titleEl.textContent = '';
+
+            const titleMain = document.createElement('span');
+            titleMain.className = 'hdw-translators-title-main';
+
+            const titleLabel = document.createElement('span');
+            titleLabel.className = 'hdw-translators-title-label';
+            titleLabel.textContent = titleText;
+
+            const activeName = document.createElement('span');
+            activeName.className = 'hdw-translators-active-name';
+            this.activeNameEl = activeName;
+
+            const toggleButton = document.createElement('button');
+            toggleButton.type = 'button';
+            toggleButton.className = 'hdw-translators-toggle-btn';
+            this.toggleButtonEl = toggleButton;
+
+            titleMain.appendChild(titleLabel);
+            titleMain.appendChild(activeName);
+            this.titleEl.appendChild(titleMain);
+            this.titleEl.appendChild(toggleButton);
+            this.titleEl.dataset.hdwEnhanced = '1';
+            this.updateSelectedTranslatorName();
+        }
+
+        bindEvents() {
+            if (!this.blockEl) {
+                return;
+            }
+
+            if (this.toggleButtonEl) {
+                this.toggleButtonEl.addEventListener('click', () => this.toggleExpanded());
+            }
+
+            this.blockEl.addEventListener('click', (event) => {
+                if (!event.target.closest('.b-translator__item')) {
+                    return;
+                }
+
+                requestAnimationFrame(() => this.updateSelectedTranslatorName());
+            });
+        }
+
+        bindObserver() {
+            if (!this.blockEl || this.mutationObserver) {
+                return;
+            }
+
+            this.mutationObserver = new MutationObserver(() => {
+                this.ensureListReference();
+                this.updateSelectedTranslatorName();
+            });
+
+            this.mutationObserver.observe(this.blockEl, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['class']
+            });
+        }
+
+        ensureListReference() {
+            if (!this.blockEl) {
+                return;
+            }
+
+            const nextListEl = this.blockEl.querySelector('#translators-list, .b-translators__list');
+            if (!nextListEl || nextListEl === this.listEl) {
+                return;
+            }
+
+            this.listEl = nextListEl;
+            if (!this.isExpanded) {
+                this.listEl.hidden = true;
+            }
+        }
+
+        getActiveTranslatorName() {
+            if (!this.blockEl) {
+                return 'Не выбрана';
+            }
+
+            const activeTranslator = this.blockEl.querySelector('.b-translator__item.active');
+            if (!activeTranslator) {
+                return 'Не выбрана';
+            }
+
+            const name = activeTranslator.textContent.replace(/\s+/g, ' ').trim();
+            return name || 'Не выбрана';
+        }
+
+        updateSelectedTranslatorName() {
+            if (!this.activeNameEl) {
+                return;
+            }
+
+            this.activeNameEl.textContent = this.getActiveTranslatorName();
+        }
+
+        setExpanded(expanded) {
+            if (!this.blockEl || !this.listEl) {
+                return;
+            }
+
+            this.isExpanded = !!expanded;
+            this.blockEl.classList.toggle('hdw-translators-collapsed', !this.isExpanded);
+            this.blockEl.classList.toggle('hdw-translators-expanded', this.isExpanded);
+            this.listEl.hidden = !this.isExpanded;
+
+            if (this.toggleButtonEl) {
+                this.toggleButtonEl.textContent = this.isExpanded ? 'Скрыть' : 'Показать';
+                this.toggleButtonEl.setAttribute('aria-expanded', this.isExpanded ? 'true' : 'false');
+            }
+
+            this.updateSelectedTranslatorName();
+        }
+
+        toggleExpanded() {
+            this.setExpanded(!this.isExpanded);
+        }
+
+        setTheaterMode(active) {
+            this.isTheaterMode = !!active;
+            if (this.isTheaterMode) {
+                this.setExpanded(false);
+            }
+        }
+    }
+
     class TheaterModeModule {
-        constructor(audioCompressor, videoEffects, playbackInfoOverlay) {
+        constructor(audioCompressor, videoEffects, playbackInfoOverlay, translatorsPanel) {
             this.audioCompressor = audioCompressor;
             this.videoEffects = videoEffects;
             this.playbackInfoOverlay = playbackInfoOverlay;
+            this.translatorsPanel = translatorsPanel;
             this.isActive = false;
             this.resizeHandler = null;
             this.mutationObservers = [];
@@ -2156,6 +2370,7 @@
             } catch (error) {
                 debugLog('[PlaybackInfoOverlay] Ошибка инициализации:', error);
             }
+            this.translatorsPanel?.init();
             this.bindHotkeys();
             this.updateButtonState();
 
@@ -2375,6 +2590,7 @@
             this.ensureBackdrop();
             document.body.classList.add('hdw-theater-mode');
             this.isActive = true;
+            this.translatorsPanel?.setTheaterMode(true);
             this.bindTheaterLayoutListeners();
             this.scheduleTheaterLayout();
             this.updateButtonState();
@@ -2386,6 +2602,7 @@
                 node.classList.remove('hdw-theater-player-block');
             });
             this.isActive = false;
+            this.translatorsPanel?.setTheaterMode(false);
             this.unbindTheaterLayoutListeners();
             document.body.style.removeProperty('--hdw-top-offset');
             document.body.style.removeProperty('--hdw-bottom-offset');
@@ -2428,10 +2645,13 @@
         }
     }
 
+    const translatorsPanel = new TranslatorsPanelModule();
+
     const playerEnhancements = new TheaterModeModule(
         new AudioCompressorModule(config.compressorStorageKey),
         new VideoEffectsModule(),
-        new PlaybackInfoOverlayModule(config.overlayStorageKey)
+        new PlaybackInfoOverlayModule(config.overlayStorageKey),
+        translatorsPanel
     );
 
     // Интерфейс
