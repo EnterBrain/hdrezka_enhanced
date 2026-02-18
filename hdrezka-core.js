@@ -32,6 +32,7 @@
         storageKey: 'hdrezka_watchlist_items',
         compressorStorageKey: 'hdw_audio_compressor_enabled',
         overlayStorageKey: 'hdw_playback_overlay_enabled',
+        aspectRatioStorageKey: 'hdw_player_aspect_ratio_mode',
         
         // Включенные функции
         features: {
@@ -605,6 +606,35 @@
             color: #fff;
         }
 
+        #player-aspect-ratio-toggle-btn {
+            background: #2d2d2d;
+            color: #a5a5a5;
+            border: 0;
+            border-radius: 4px;
+            transition: background-color .2s linear, color .2s linear, box-shadow .2s linear, filter .2s linear;
+            height: 38px;
+            margin: 0;
+            outline: 0;
+            min-width: 64px;
+            padding: 0 10px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            line-height: 38px;
+        }
+
+        #player-aspect-ratio-toggle-btn:hover {
+            background: #414141;
+            color: #fff;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+            filter: saturate(1.2);
+        }
+
+        #player-aspect-ratio-toggle-btn.hdw-active {
+            background: #1f618d;
+            color: #fff;
+        }
+
         #audio-compressor-toggle-btn {
             background: #2d2d2d;
             color: #a5a5a5;
@@ -842,6 +872,7 @@
             --hdw-player-available-height: calc(100vh - var(--hdw-top-offset) - var(--hdw-bottom-offset) - var(--hdw-translators-height) - var(--hdw-gap) * 2);
             --hdw-player-chrome-height: 48px;
             --hdw-player-box-height: calc(var(--hdw-player-available-height) - var(--hdw-player-chrome-height));
+            --hdw-player-aspect-ratio: 16 / 9;
         }
 
         #hdw-theater-backdrop {
@@ -861,7 +892,7 @@
             top: var(--hdw-top-offset) !important;
             left: 50% !important;
             transform: translateX(-50%) !important;
-            width: min(96vw, 1280px) !important;
+            width: 96vw !important;
             margin: 0 !important;
             z-index: 6001 !important;
             box-sizing: border-box;
@@ -874,7 +905,7 @@
             top: calc(var(--hdw-top-offset) + var(--hdw-translators-height) + var(--hdw-gap)) !important;
             left: 50% !important;
             transform: translateX(-50%) !important;
-            width: min(96vw, 1280px) !important;
+            width: 96vw !important;
             margin: 0 !important;
             z-index: 6000 !important;
             box-sizing: border-box;
@@ -898,7 +929,7 @@
         body.hdw-theater-mode #cdnplayer-container,
         body.hdw-theater-mode #youtubeplayer,
         body.hdw-theater-mode #ownplayer {
-            width: min(100%, calc(var(--hdw-player-box-height) * 16 / 9)) !important;
+            width: min(100%, calc(var(--hdw-player-box-height) * var(--hdw-player-aspect-ratio))) !important;
             max-width: 100% !important;
             max-height: var(--hdw-player-box-height) !important;
             height: var(--hdw-player-box-height) !important;
@@ -2397,6 +2428,7 @@
             this.playbackInfoOverlay = playbackInfoOverlay;
             this.translatorsPanel = translatorsPanel;
             this.isActive = false;
+            this.aspectRatioMode = this.normalizeAspectRatioMode(GM_getValue(config.aspectRatioStorageKey, '16:9'));
             this.resizeHandler = null;
             this.mutationObservers = [];
             this.layoutRaf = null;
@@ -2412,6 +2444,8 @@
             this.initialized = true;
             this.ensureBackdrop();
             this.addToggleButton();
+            this.addAspectRatioToggleButton();
+            this.applyAspectRatioCssVar();
             this.audioCompressor.init();
             this.videoEffects.init();
             try {
@@ -2422,6 +2456,7 @@
             this.translatorsPanel?.init();
             this.bindHotkeys();
             this.updateButtonState();
+            this.updateAspectRatioButtonState();
 
         }
 
@@ -2494,6 +2529,46 @@
             button.addEventListener('click', () => this.toggleTheaterMode());
 
             panelButtons.appendChild(button);
+        }
+
+        addAspectRatioToggleButton() {
+            if (document.getElementById('player-aspect-ratio-toggle-btn')) {
+                return;
+            }
+
+            const panelButtons = ensurePlayerControlsPanel();
+            if (!panelButtons) {
+                return;
+            }
+
+            const button = document.createElement('button');
+            button.id = 'player-aspect-ratio-toggle-btn';
+            button.type = 'button';
+            button.addEventListener('click', () => this.toggleAspectRatio());
+
+            panelButtons.appendChild(button);
+        }
+
+        normalizeAspectRatioMode(value) {
+            return value === '21:9' ? '21:9' : '16:9';
+        }
+
+        getAspectRatioCssValue() {
+            return this.aspectRatioMode === '21:9' ? '21 / 9' : '16 / 9';
+        }
+
+        applyAspectRatioCssVar() {
+            document.body.style.setProperty('--hdw-player-aspect-ratio', this.getAspectRatioCssValue());
+        }
+
+        toggleAspectRatio() {
+            this.aspectRatioMode = this.aspectRatioMode === '16:9' ? '21:9' : '16:9';
+            GM_setValue(config.aspectRatioStorageKey, this.aspectRatioMode);
+            this.applyAspectRatioCssVar();
+            if (this.isActive) {
+                this.updateTheaterLayoutVars();
+            }
+            this.updateAspectRatioButtonState();
         }
 
         scheduleTheaterLayout() {
@@ -2649,7 +2724,10 @@
             document.body.style.removeProperty('--hdw-player-available-height');
             document.body.style.removeProperty('--hdw-player-chrome-height');
             document.body.style.removeProperty('--hdw-player-box-height');
+            document.body.style.removeProperty('--hdw-player-aspect-ratio');
+            this.applyAspectRatioCssVar();
             this.updateButtonState();
+            this.updateAspectRatioButtonState();
         }
 
         toggleTheaterMode() {
@@ -2680,6 +2758,17 @@
 
             button.classList.toggle('hdw-active', this.isActive);
             button.title = `Театральный режим: ${this.isActive ? 'Вкл' : 'Выкл'} (${HOTKEYS.theater.label}, Esc)`;
+        }
+
+        updateAspectRatioButtonState() {
+            const button = document.getElementById('player-aspect-ratio-toggle-btn');
+            if (!button) {
+                return;
+            }
+
+            button.textContent = this.aspectRatioMode;
+            button.classList.toggle('hdw-active', this.aspectRatioMode === '21:9');
+            button.title = `Соотношение сторон плеера: ${this.aspectRatioMode}`;
         }
     }
 
