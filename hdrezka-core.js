@@ -31,6 +31,7 @@
         // Ключ для хранения данных
         storageKey: 'hdrezka_watchlist_items',
         compressorStorageKey: 'hdw_audio_compressor_enabled',
+        overlayStorageKey: 'hdw_playback_overlay_enabled',
         
         // Включенные функции
         features: {
@@ -686,6 +687,97 @@
         #video-mirror-toggle-btn.hdw-active {
             background: #1f618d;
             color: #fff;
+        }
+
+        #playback-info-overlay-toggle-btn {
+            background: #2d2d2d;
+            color: #a5a5a5;
+            border: 0;
+            border-radius: 4px;
+            transition: background-color .2s linear, color .2s linear, box-shadow .2s linear, filter .2s linear;
+            height: 38px;
+            margin: 0;
+            outline: 0;
+            width: 46px;
+            font-size: 0;
+            cursor: pointer;
+            line-height: normal !important;
+        }
+
+        #playback-info-overlay-toggle-btn::before {
+            content: 'О';
+            display: block;
+            font-size: 17px;
+            font-weight: 700;
+            line-height: 38px;
+            text-align: center;
+        }
+
+        #playback-info-overlay-toggle-btn:hover {
+            background: #414141;
+            color: #fff;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+            filter: saturate(1.2);
+        }
+
+        #playback-info-overlay-toggle-btn.hdw-active {
+            background: #1f618d;
+            color: #fff;
+        }
+
+        #hdw-playback-info-overlay {
+            position: absolute;
+            left: 16px;
+            top: 14px;
+            z-index: 40;
+            max-width: calc(100% - 32px);
+            padding: 0;
+            border-radius: 0;
+            background: transparent;
+            color: #ccc;
+            font-family: Roboto, Verdana, Arial, sans-serif;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(-4px);
+            transition: opacity .15s linear, transform .15s linear;
+            white-space: normal;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #hdw-playback-info-overlay.hdw-visible {
+            opacity: 0.7 !important;
+            transform: translateY(0);
+        }
+
+        #hdw-playback-info-overlay .hdw-overlay-title {
+            display: block;
+            font-size: 16px;
+            font-weight: 700;
+            line-height: 1.25;
+            letter-spacing: 0.2px;
+            color: #f2f2f2;
+            text-shadow:
+                0 1px 2px rgba(0, 0, 0, 0.95),
+                1px 0 0 rgba(0, 0, 0, 0.8),
+                -1px 0 0 rgba(0, 0, 0, 0.8),
+                0 1px 0 rgba(0, 0, 0, 0.8),
+                0 -1px 0 rgba(0, 0, 0, 0.8),
+                0 0 8px rgba(0, 0, 0, 0.7);
+        }
+
+        #hdw-playback-info-overlay .hdw-overlay-time {
+            display: block;
+            margin-top: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            line-height: 1.3;
+            color: #e0e0e0;
+            text-shadow:
+                0 1px 2px rgba(0, 0, 0, 0.95),
+                1px 0 0 rgba(0, 0, 0, 0.8),
+                -1px 0 0 rgba(0, 0, 0, 0.8),
+                0 0 6px rgba(0, 0, 0, 0.65);
         }
 
         .hdw-video-blur {
@@ -1652,10 +1744,395 @@
         }
     }
 
+    class PlaybackInfoOverlayModule {
+        constructor(storageKey) {
+            this.storageKey = storageKey;
+            this.enabled = GM_getValue(storageKey, false);
+            this.runtimeActive = false;
+            this.currentVideo = null;
+            this.observer = null;
+            this.videoEvents = null;
+            this.overlayRaf = null;
+            this.overlay = null;
+            this.titleNode = null;
+            this.timeNode = null;
+            this.fullscreenHandler = null;
+            this.initialized = false;
+        }
+
+        init() {
+            if (this.initialized) {
+                this.updateButtonState();
+                this.scheduleOverlayUpdate();
+                return;
+            }
+
+            this.initialized = true;
+            this.addButton();
+            this.updateButtonState();
+            if (this.enabled) {
+                this.startRuntime();
+            }
+        }
+
+        startRuntime() {
+            if (this.runtimeActive) {
+                return;
+            }
+
+            this.runtimeActive = true;
+            this.ensurePlayerObserver();
+            this.ensureFullscreenListener();
+            this.ensureForCurrentVideo();
+            this.scheduleOverlayUpdate();
+        }
+
+        stopRuntime() {
+            this.runtimeActive = false;
+
+            if (this.observer) {
+                this.observer.disconnect();
+                this.observer = null;
+            }
+
+            if (this.videoEvents) {
+                const { video, handler } = this.videoEvents;
+                video.removeEventListener('play', handler);
+                video.removeEventListener('pause', handler);
+                video.removeEventListener('timeupdate', handler);
+                video.removeEventListener('loadedmetadata', handler);
+                video.removeEventListener('ended', handler);
+                this.videoEvents = null;
+            }
+
+            this.currentVideo = null;
+
+            if (this.overlayRaf) {
+                cancelAnimationFrame(this.overlayRaf);
+                this.overlayRaf = null;
+            }
+
+            if (this.fullscreenHandler) {
+                document.removeEventListener('fullscreenchange', this.fullscreenHandler);
+                document.removeEventListener('webkitfullscreenchange', this.fullscreenHandler);
+                this.fullscreenHandler = null;
+            }
+
+            this.setOverlayVisible(false);
+        }
+
+        addButton() {
+            if (document.getElementById('playback-info-overlay-toggle-btn')) {
+                return;
+            }
+
+            const panelButtons = ensurePlayerControlsPanel();
+            if (!panelButtons) {
+                return;
+            }
+
+            const button = document.createElement('button');
+            button.id = 'playback-info-overlay-toggle-btn';
+            button.type = 'button';
+            button.title = this.buildButtonTitle();
+            button.addEventListener('click', () => this.toggle());
+
+            panelButtons.insertBefore(button, panelButtons.firstChild);
+        }
+
+        ensurePlayerObserver() {
+            if (this.observer) {
+                return;
+            }
+
+            const root = document.getElementById('cdnplayer-container')
+                || document.getElementById('ownplayer')
+                || document.getElementById('player')
+                || document.body;
+            this.observer = new MutationObserver(() => {
+                this.ensureForCurrentVideo();
+                this.scheduleOverlayUpdate();
+            });
+            this.observer.observe(root, {
+                childList: true,
+                subtree: true
+            });
+        }
+
+        scheduleOverlayUpdate() {
+            if (!this.runtimeActive) {
+                return;
+            }
+
+            if (this.overlayRaf) {
+                return;
+            }
+
+            this.overlayRaf = requestAnimationFrame(() => {
+                this.overlayRaf = null;
+                this.updateOverlay();
+            });
+        }
+
+        getCurrentVideoElement() {
+            return document.querySelector('#cdnplayer video, #ownplayer video, video');
+        }
+
+        getPlayerRoot() {
+            return document.getElementById('cdnplayer')
+                || document.getElementById('ownplayer')
+                || (this.currentVideo ? this.currentVideo.closest('#cdnplayer, #ownplayer') : null);
+        }
+
+        getOverlayHost() {
+            const fsEl = document.fullscreenElement || document.webkitFullscreenElement || null;
+            if (fsEl && (fsEl.id === 'oframecdnplayer' || fsEl.id === 'oframeownplayer' || /oframe/i.test(fsEl.id || ''))) {
+                return fsEl;
+            }
+
+            const playerRoot = this.getPlayerRoot();
+            if (playerRoot) {
+                const pjsFrame = playerRoot.querySelector('#oframecdnplayer, #oframeownplayer, pjsdiv[id^="oframe"]');
+                if (pjsFrame) {
+                    return pjsFrame;
+                }
+            }
+
+            return playerRoot
+                || document.getElementById('cdnplayer-container')
+                || document.getElementById('ownplayer');
+        }
+
+        ensureFullscreenListener() {
+            if (this.fullscreenHandler) {
+                return;
+            }
+
+            this.fullscreenHandler = () => {
+                this.ensureOverlayRoot();
+                this.scheduleOverlayUpdate();
+            };
+            document.addEventListener('fullscreenchange', this.fullscreenHandler);
+            document.addEventListener('webkitfullscreenchange', this.fullscreenHandler);
+        }
+
+        ensureOverlayRoot() {
+            const root = this.getOverlayHost();
+
+            if (!root) {
+                return null;
+            }
+
+            if (!this.overlay) {
+                const overlay = document.createElement('div');
+                overlay.id = 'hdw-playback-info-overlay';
+                overlay.innerHTML = `
+                    <span class="hdw-overlay-title"></span>
+                    <span class="hdw-overlay-time"></span>
+                `;
+
+                this.overlay = overlay;
+                this.titleNode = overlay.querySelector('.hdw-overlay-title');
+                this.timeNode = overlay.querySelector('.hdw-overlay-time');
+            }
+
+            if (this.overlay.parentElement !== root) {
+                const pos = window.getComputedStyle(root).position;
+                if (!pos || pos === 'static') {
+                    root.style.position = 'relative';
+                }
+                root.appendChild(this.overlay);
+            }
+
+            return root;
+        }
+
+        ensureForCurrentVideo() {
+            const video = this.getCurrentVideoElement();
+            if (video === this.currentVideo) {
+                return;
+            }
+
+            if (this.videoEvents) {
+                const { video: prevVideo, handler } = this.videoEvents;
+                prevVideo.removeEventListener('play', handler);
+                prevVideo.removeEventListener('pause', handler);
+                prevVideo.removeEventListener('timeupdate', handler);
+                prevVideo.removeEventListener('loadedmetadata', handler);
+                prevVideo.removeEventListener('ended', handler);
+            }
+
+            this.currentVideo = video;
+            this.ensureOverlayRoot();
+
+            if (!video) {
+                this.videoEvents = null;
+                return;
+            }
+
+            const handler = () => this.scheduleOverlayUpdate();
+            video.addEventListener('play', handler);
+            video.addEventListener('pause', handler);
+            video.addEventListener('timeupdate', handler);
+            video.addEventListener('loadedmetadata', handler);
+            video.addEventListener('ended', handler);
+            this.videoEvents = { video, handler };
+        }
+
+        elementIsVisible(el) {
+            if (!el) {
+                return false;
+            }
+
+            const style = window.getComputedStyle(el);
+            if (style.display === 'none' || style.visibility === 'hidden') {
+                return false;
+            }
+            if ((parseFloat(style.opacity || '1') || 0) < 0.08) {
+                return false;
+            }
+
+            const rect = el.getBoundingClientRect();
+            return rect.width > 2 && rect.height > 2;
+        }
+
+        isControlsHidden() {
+            const root = this.getPlayerRoot();
+            if (!root) {
+                return false;
+            }
+
+            const candidates = [
+                ...root.querySelectorAll('#cdnplayer_control_timeline'),
+                ...root.querySelectorAll('[id$="control_timeline"]'),
+                ...root.querySelectorAll('[id*="control_timeline"]'),
+                ...root.querySelectorAll('[id*="control_cc"]')
+            ];
+
+            if (!candidates.length) {
+                return false;
+            }
+
+            return !candidates.some((el) => this.elementIsVisible(el));
+        }
+
+        formatPlaybackTime(rawSeconds) {
+            const total = Number.isFinite(rawSeconds) ? Math.max(0, Math.floor(rawSeconds)) : 0;
+            const hours = Math.floor(total / 3600);
+            const minutes = Math.floor((total % 3600) / 60);
+            const seconds = total % 60;
+
+            if (hours > 0) {
+                return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }
+
+            return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        buildHeaderText() {
+            const title = (document.querySelector(config.selectors.title)?.textContent || '').trim() || 'Без названия';
+            const seasonInfo = MovieParser.parseSeasonInfo();
+            const episodeInfo = MovieParser.parseEpisodeInfo();
+            const parts = [];
+
+            if (seasonInfo) {
+                if (seasonInfo.id && seasonInfo.name) {
+                    parts.push(seasonInfo.name);
+                } else if (seasonInfo.id) {
+                    parts.push(`Сезон ${seasonInfo.id}`);
+                }
+            }
+
+            if (episodeInfo) {
+                if (episodeInfo.id && episodeInfo.name) {
+                    parts.push(episodeInfo.name);
+                } else if (episodeInfo.id) {
+                    parts.push(`Серия ${episodeInfo.id}`);
+                }
+            }
+
+            return parts.length ? `${title} • ${parts.join(', ')}` : title;
+        }
+
+        buildTimeText(video) {
+            if (!video) {
+                return '00:00 / --:--';
+            }
+
+            const current = this.formatPlaybackTime(video.currentTime);
+            const duration = Number.isFinite(video.duration) && video.duration > 0
+                ? this.formatPlaybackTime(video.duration)
+                : '--:--';
+            return `${current} / ${duration}`;
+        }
+
+        setOverlayVisible(visible) {
+            if (!this.overlay) {
+                return;
+            }
+            this.overlay.classList.toggle('hdw-visible', visible);
+        }
+
+        updateOverlay() {
+            if (!this.runtimeActive) {
+                this.setOverlayVisible(false);
+                return;
+            }
+
+            this.ensureForCurrentVideo();
+            this.ensureOverlayRoot();
+
+            if (!this.overlay || !this.titleNode || !this.timeNode) {
+                return;
+            }
+
+            const video = this.currentVideo;
+            const canShow = !!video && this.enabled && !video.paused && !video.ended && this.isControlsHidden();
+            if (!canShow) {
+                this.setOverlayVisible(false);
+                return;
+            }
+
+            this.titleNode.textContent = this.buildHeaderText();
+            this.timeNode.textContent = this.buildTimeText(video);
+            this.setOverlayVisible(true);
+        }
+
+        buildButtonTitle() {
+            return `Оверлей информации: ${this.enabled ? 'Вкл' : 'Выкл'}`;
+        }
+
+        setEnabled(enabled) {
+            this.enabled = !!enabled;
+            GM_setValue(this.storageKey, this.enabled);
+            this.updateButtonState();
+            if (this.enabled) {
+                this.startRuntime();
+            } else {
+                this.stopRuntime();
+            }
+        }
+
+        toggle() {
+            this.setEnabled(!this.enabled);
+        }
+
+        updateButtonState() {
+            const button = document.getElementById('playback-info-overlay-toggle-btn');
+            if (!button) {
+                return;
+            }
+
+            button.classList.toggle('hdw-active', this.enabled);
+            button.title = this.buildButtonTitle();
+        }
+    }
+
     class TheaterModeModule {
-        constructor(audioCompressor, videoEffects) {
+        constructor(audioCompressor, videoEffects, playbackInfoOverlay) {
             this.audioCompressor = audioCompressor;
             this.videoEffects = videoEffects;
+            this.playbackInfoOverlay = playbackInfoOverlay;
             this.isActive = false;
             this.resizeHandler = null;
             this.mutationObservers = [];
@@ -1674,6 +2151,11 @@
             this.addToggleButton();
             this.audioCompressor.init();
             this.videoEffects.init();
+            try {
+                this.playbackInfoOverlay.init();
+            } catch (error) {
+                debugLog('[PlaybackInfoOverlay] Ошибка инициализации:', error);
+            }
             this.bindHotkeys();
             this.updateButtonState();
 
@@ -1948,7 +2430,8 @@
 
     const playerEnhancements = new TheaterModeModule(
         new AudioCompressorModule(config.compressorStorageKey),
-        new VideoEffectsModule()
+        new VideoEffectsModule(),
+        new PlaybackInfoOverlayModule(config.overlayStorageKey)
     );
 
     // Интерфейс
