@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HDRezka Enhanced
 // @namespace    http://tampermonkey.net/
-// @version      0.1.2
+// @version      0.1.3
 // @description  Улучшение пользовательского опыта на HDRezka: закладки, прогресс и UX-улучшения интерфейса
 // @author       EnterBrain42
 // @match        *://*/*
@@ -12,7 +12,9 @@
 // @grant        GM_registerMenuCommand
 // @grant        GM_getResourceText
 // @grant        GM_addStyle
-// @resource     hdrezka_core https://raw.githubusercontent.com/EnterBrain/hdrezka_enhanced/main/hdrezka-core.js?v=20260217-2
+// @grant        GM_xmlhttpRequest
+// @connect      raw.githubusercontent.com
+// @resource     hdrezka_core https://raw.githubusercontent.com/EnterBrain/hdrezka_enhanced/main/hdrezka-core.js
 // @run-at       document-idle
 // @license      MIT
 // ==/UserScript==
@@ -22,6 +24,8 @@
 
     const STORAGE_KEY_HOSTS = 'hdrezka_loader_known_hosts_v1';
     const STORAGE_KEY_LOADER_DISABLED = 'hdrezka_loader_disabled_v1';
+    const CORE_URL = 'https://raw.githubusercontent.com/EnterBrain/hdrezka_enhanced/main/hdrezka-core.js';
+    const CORE_FETCH_TIMEOUT_MS = 8000;
 
     const DEFAULT_HOSTS = [
         'hdrezka-home.tv',
@@ -192,36 +196,96 @@
         });
     }
 
-    function loadCoreAndRun() {
-        if (window.__HDREZKA_CORE_LOADED__) {
-            return;
+    function isCoreCodeLikelyValid(coreCode) {
+        const probe = coreCode.trimStart().slice(0, 120).toLowerCase();
+        if (/^(https?:\/\/|file:\/\/)/i.test(coreCode.trim())) {
+            return false;
         }
+        if (probe.startsWith('<!doctype') || probe.startsWith('<html') || probe.includes('not found')) {
+            return false;
+        }
+        return true;
+    }
 
+    function readBundledCoreCode() {
         let coreCode = '';
         try {
             coreCode = GM_getResourceText('hdrezka_core') || '';
         } catch (error) {
             console.error('[HDRezka Loader] Ошибка чтения @resource hdrezka_core:', error);
-            return;
+            return '';
         }
 
         if (!coreCode.trim()) {
             console.error('[HDRezka Loader] Пустой core-ресурс. Проверьте @resource URL.');
-            return;
+            return '';
         }
 
-        const probe = coreCode.trimStart().slice(0, 120).toLowerCase();
         if (/^(https?:\/\/|file:\/\/)/i.test(coreCode.trim())) {
             console.error('[HDRezka Loader] @resource вернул URL вместо JS-кода:', coreCode.trim());
             window.alert('HDRezka Loader: ресурс core не загружен как JS (получен URL). Для @resource используйте http(s) URL и переустановите скрипт.');
-            return;
+            return '';
         }
 
-        if (probe.startsWith('<!doctype') || probe.startsWith('<html') || probe.includes('not found')) {
+        if (!isCoreCodeLikelyValid(coreCode)) {
             console.error('[HDRezka Loader] @resource не похож на JS-файл. Проверьте URL в @resource.', {
                 preview: coreCode.slice(0, 240)
             });
             window.alert('HDRezka Loader: @resource вернул не JS. Проверьте URL core-файла в метаданных.');
+            return '';
+        }
+
+        return coreCode;
+    }
+
+    function fetchFreshCoreCode() {
+        return new Promise((resolve) => {
+            if (typeof GM_xmlhttpRequest !== 'function') {
+                resolve('');
+                return;
+            }
+
+            const url = `${CORE_URL}?ts=${Date.now()}`;
+            GM_xmlhttpRequest({
+                method: 'GET',
+                url,
+                timeout: CORE_FETCH_TIMEOUT_MS,
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    Pragma: 'no-cache'
+                },
+                onload: (response) => {
+                    const text = String(response?.responseText || '');
+                    if (response?.status === 200 && text.trim() && isCoreCodeLikelyValid(text)) {
+                        resolve(text);
+                        return;
+                    }
+                    console.warn('[HDRezka Loader] Онлайн-загрузка core неуспешна, fallback на @resource.', {
+                        status: response?.status
+                    });
+                    resolve('');
+                },
+                onerror: () => resolve(''),
+                ontimeout: () => resolve('')
+            });
+        });
+    }
+
+    async function resolveCoreCode() {
+        const fresh = await fetchFreshCoreCode();
+        if (fresh) {
+            return fresh;
+        }
+        return readBundledCoreCode();
+    }
+
+    async function loadCoreAndRun() {
+        if (window.__HDREZKA_CORE_LOADED__) {
+            return;
+        }
+
+        const coreCode = await resolveCoreCode();
+        if (!coreCode) {
             return;
         }
 

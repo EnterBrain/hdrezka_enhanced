@@ -726,6 +726,10 @@
             display: none !important;
         }
 
+        body.hdw-theater-mode .b-post__support_holder {
+            display: none !important;
+        }
+
         .b-player__restricted {
             height: 540px !important;
             width: 960px !important;
