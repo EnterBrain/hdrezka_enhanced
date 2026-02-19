@@ -832,7 +832,8 @@
             bottom: calc(100% - 1px);
             margin-bottom: 0;
             transform: translateX(-50%);
-            min-width: 220px;
+            min-width: 160px;
+            width: max-content;
             padding: 10px 12px;
             border-radius: 6px;
             background: rgba(12, 12, 12, 0.95);
