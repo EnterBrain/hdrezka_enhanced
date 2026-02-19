@@ -631,9 +631,71 @@
             filter: saturate(1.2);
         }
 
-        #player-aspect-ratio-toggle-btn.hdw-active {
-            background: #1f618d;
+        .hdw-aspect-ratio-wrap {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        #hdw-aspect-ratio-popup {
+            position: absolute;
+            left: 50%;
+            bottom: calc(100% - 1px);
+            margin-bottom: 0;
+            transform: translateX(-50%);
+            min-width: 150px;
+            padding: 10px;
+            border-radius: 6px;
+            background: rgba(12, 12, 12, 0.95);
+            color: #e8e8e8;
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4);
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity .15s linear, visibility .15s linear;
+            z-index: 90;
+        }
+
+        .hdw-aspect-ratio-wrap:hover #hdw-aspect-ratio-popup,
+        .hdw-aspect-ratio-wrap:focus-within #hdw-aspect-ratio-popup,
+        .hdw-aspect-ratio-wrap.hdw-popup-open #hdw-aspect-ratio-popup {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .hdw-aspect-ratio-title {
+            display: block;
+            margin-bottom: 6px;
             color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .hdw-aspect-ratio-options {
+            display: grid;
+            gap: 6px;
+        }
+
+        .hdw-aspect-ratio-option {
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.06);
+            color: #fff;
+            padding: 5px 8px;
+            cursor: pointer;
+            font-size: 12px;
+            line-height: 1.2;
+            text-align: center;
+        }
+
+        .hdw-aspect-ratio-option:hover {
+            background: rgba(255, 255, 255, 0.18);
+        }
+
+        .hdw-aspect-ratio-option.hdw-selected {
+            border-color: #1f618d;
+            background: #1f618d;
         }
 
         #audio-compressor-toggle-btn {
@@ -765,8 +827,8 @@
         #hdw-overlay-settings-popup {
             position: absolute;
             left: 50%;
-            bottom: 100%;
-            margin-bottom: 4px;
+            bottom: calc(100% - 1px);
+            margin-bottom: 0;
             transform: translateX(-50%);
             min-width: 220px;
             padding: 10px 12px;
@@ -785,7 +847,8 @@
         }
 
         .hdw-overlay-toggle-wrap:hover #hdw-overlay-settings-popup,
-        .hdw-overlay-toggle-wrap:focus-within #hdw-overlay-settings-popup {
+        .hdw-overlay-toggle-wrap:focus-within #hdw-overlay-settings-popup,
+        .hdw-overlay-toggle-wrap.hdw-popup-open #hdw-overlay-settings-popup {
             opacity: 1;
             visibility: visible;
             pointer-events: auto;
@@ -1538,6 +1601,49 @@
         return buttons;
     }
 
+    function bindPopupHoverPersistence(wrapper, popup) {
+        if (!wrapper || !popup) {
+            return;
+        }
+
+        let hideTimer = null;
+        const OPEN_CLASS = 'hdw-popup-open';
+        const HIDE_DELAY_MS = 220;
+
+        const clearHideTimer = () => {
+            if (!hideTimer) {
+                return;
+            }
+            clearTimeout(hideTimer);
+            hideTimer = null;
+        };
+
+        const openPopup = () => {
+            clearHideTimer();
+            wrapper.classList.add(OPEN_CLASS);
+        };
+
+        const scheduleHide = () => {
+            clearHideTimer();
+            hideTimer = setTimeout(() => {
+                if (wrapper.matches(':hover') || wrapper.matches(':focus-within')) {
+                    return;
+                }
+                wrapper.classList.remove(OPEN_CLASS);
+            }, HIDE_DELAY_MS);
+        };
+
+        ['mouseenter', 'pointerenter', 'focusin'].forEach((eventName) => {
+            wrapper.addEventListener(eventName, openPopup);
+            popup.addEventListener(eventName, openPopup);
+        });
+
+        ['mouseleave', 'pointerleave', 'focusout'].forEach((eventName) => {
+            wrapper.addEventListener(eventName, scheduleHide);
+            popup.addEventListener(eventName, scheduleHide);
+        });
+    }
+
     class AudioCompressorModule {
         constructor(storageKey) {
             this.storageKey = storageKey;
@@ -2014,6 +2120,7 @@
             const settingsPopup = this.createSettingsPopup();
             wrapper.appendChild(settingsPopup);
             wrapper.appendChild(button);
+            bindPopupHoverPersistence(wrapper, settingsPopup);
 
             panelButtons.insertBefore(wrapper, panelButtons.firstChild);
         }
@@ -2536,8 +2643,8 @@
 
             this.initialized = true;
             this.ensureBackdrop();
-            this.addToggleButton();
             this.addAspectRatioToggleButton();
+            this.addToggleButton();
             this.applyAspectRatioCssVar();
             this.audioCompressor.init();
             this.videoEffects.init();
@@ -2637,9 +2744,17 @@
             const button = document.createElement('button');
             button.id = 'player-aspect-ratio-toggle-btn';
             button.type = 'button';
-            button.addEventListener('click', () => this.toggleAspectRatio());
+            button.title = `Соотношение сторон плеера: ${this.aspectRatioMode}`;
 
-            panelButtons.appendChild(button);
+            const wrapper = document.createElement('div');
+            wrapper.className = 'hdw-aspect-ratio-wrap';
+
+            const popup = this.createAspectRatioPopup();
+            wrapper.appendChild(popup);
+            wrapper.appendChild(button);
+            bindPopupHoverPersistence(wrapper, popup);
+
+            panelButtons.appendChild(wrapper);
         }
 
         normalizeAspectRatioMode(value) {
@@ -2654,14 +2769,47 @@
             document.body.style.setProperty('--hdw-player-aspect-ratio', this.getAspectRatioCssValue());
         }
 
-        toggleAspectRatio() {
-            this.aspectRatioMode = this.aspectRatioMode === '16:9' ? '21:9' : '16:9';
-            GM_setValue(config.aspectRatioStorageKey, this.aspectRatioMode);
+        setAspectRatioMode(nextMode) {
+            const normalized = this.normalizeAspectRatioMode(nextMode);
+            if (normalized === this.aspectRatioMode) {
+                return;
+            }
+
+            this.aspectRatioMode = normalized;
+            GM_setValue(config.aspectRatioStorageKey, normalized);
             this.applyAspectRatioCssVar();
             if (this.isActive) {
                 this.updateTheaterLayoutVars();
             }
             this.updateAspectRatioButtonState();
+        }
+
+        createAspectRatioPopup() {
+            const popup = document.createElement('div');
+            popup.id = 'hdw-aspect-ratio-popup';
+
+            const title = document.createElement('span');
+            title.className = 'hdw-aspect-ratio-title';
+            title.textContent = 'Режим экрана';
+            popup.appendChild(title);
+
+            const options = document.createElement('div');
+            options.className = 'hdw-aspect-ratio-options';
+            options.appendChild(this.createAspectRatioOptionButton('16:9'));
+            options.appendChild(this.createAspectRatioOptionButton('21:9'));
+            popup.appendChild(options);
+
+            return popup;
+        }
+
+        createAspectRatioOptionButton(mode) {
+            const optionButton = document.createElement('button');
+            optionButton.type = 'button';
+            optionButton.className = 'hdw-aspect-ratio-option';
+            optionButton.dataset.aspectMode = mode;
+            optionButton.textContent = mode;
+            optionButton.addEventListener('click', () => this.setAspectRatioMode(mode));
+            return optionButton;
         }
 
         scheduleTheaterLayout() {
@@ -2860,8 +3008,17 @@
             }
 
             button.textContent = this.aspectRatioMode;
-            button.classList.toggle('hdw-active', this.aspectRatioMode === '21:9');
             button.title = `Соотношение сторон плеера: ${this.aspectRatioMode}`;
+
+            const popup = document.getElementById('hdw-aspect-ratio-popup');
+            if (!popup) {
+                return;
+            }
+
+            popup.querySelectorAll('.hdw-aspect-ratio-option').forEach((optionButton) => {
+                const mode = optionButton.getAttribute('data-aspect-mode');
+                optionButton.classList.toggle('hdw-selected', mode === this.aspectRatioMode);
+            });
         }
     }
 
