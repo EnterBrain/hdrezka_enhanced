@@ -32,6 +32,7 @@
         storageKey: 'hdrezka_watchlist_items',
         compressorStorageKey: 'hdw_audio_compressor_enabled',
         overlayStorageKey: 'hdw_playback_overlay_enabled',
+        overlayDisplayStorageKey: 'hdw_playback_overlay_display_v1',
         aspectRatioStorageKey: 'hdw_player_aspect_ratio_mode',
         
         // Включенные функции
@@ -558,7 +559,7 @@
             align-items: center;
             justify-content: center;
             background: #e1e289;
-            overflow: hidden;
+            overflow: visible;
             min-height: 50px;
             padding: 0 10px;
             box-sizing: border-box;
@@ -753,6 +754,65 @@
         #playback-info-overlay-toggle-btn.hdw-active {
             background: #1f618d;
             color: #fff;
+        }
+
+        .hdw-overlay-toggle-wrap {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        #hdw-overlay-settings-popup {
+            position: absolute;
+            left: 50%;
+            bottom: 100%;
+            margin-bottom: 4px;
+            transform: translateX(-50%);
+            min-width: 220px;
+            padding: 10px 12px;
+            border-radius: 6px;
+            background: rgba(12, 12, 12, 0.95);
+            color: #e8e8e8;
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4);
+            font-size: 12px;
+            line-height: 1.35;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity .15s linear, visibility .15s linear;
+            z-index: 90;
+        }
+
+        .hdw-overlay-toggle-wrap:hover #hdw-overlay-settings-popup,
+        .hdw-overlay-toggle-wrap:focus-within #hdw-overlay-settings-popup {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        #hdw-overlay-settings-popup .hdw-overlay-settings-title {
+            display: block;
+            margin-bottom: 6px;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        #hdw-overlay-settings-popup .hdw-overlay-settings-item {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        #hdw-overlay-settings-popup .hdw-overlay-settings-item + .hdw-overlay-settings-item {
+            margin-top: 5px;
+        }
+
+        #hdw-overlay-settings-popup .hdw-overlay-settings-item input[type="checkbox"] {
+            margin: 0;
+            accent-color: #1f618d;
         }
 
         #hdw-playback-info-overlay {
@@ -1820,9 +1880,11 @@
     }
 
     class PlaybackInfoOverlayModule {
-        constructor(storageKey) {
+        constructor(storageKey, displayStorageKey) {
             this.storageKey = storageKey;
+            this.displayStorageKey = displayStorageKey;
             this.enabled = GM_getValue(storageKey, false);
+            this.displaySettings = this.loadDisplaySettings();
             this.runtimeActive = false;
             this.currentVideo = null;
             this.videoScanInterval = null;
@@ -1833,6 +1895,43 @@
             this.fullscreenHandler = null;
             this.visibilityHandler = null;
             this.initialized = false;
+        }
+
+        getDefaultDisplaySettings() {
+            return {
+                showTitle: true,
+                showSeasonEpisode: true,
+                showProgress: true
+            };
+        }
+
+        normalizeDisplaySettings(rawSettings) {
+            const defaults = this.getDefaultDisplaySettings();
+            const source = rawSettings && typeof rawSettings === 'object' ? rawSettings : {};
+            return {
+                showTitle: source.showTitle !== undefined ? !!source.showTitle : defaults.showTitle,
+                showSeasonEpisode: source.showSeasonEpisode !== undefined ? !!source.showSeasonEpisode : defaults.showSeasonEpisode,
+                showProgress: source.showProgress !== undefined ? !!source.showProgress : defaults.showProgress
+            };
+        }
+
+        loadDisplaySettings() {
+            const stored = GM_getValue(this.displayStorageKey, null);
+            return this.normalizeDisplaySettings(stored);
+        }
+
+        saveDisplaySettings() {
+            GM_setValue(this.displayStorageKey, this.displaySettings);
+        }
+
+        updateDisplaySetting(settingKey, enabled) {
+            if (!Object.prototype.hasOwnProperty.call(this.displaySettings, settingKey)) {
+                return;
+            }
+
+            this.displaySettings[settingKey] = !!enabled;
+            this.saveDisplaySettings();
+            this.updateOverlay();
         }
 
         init() {
@@ -1909,7 +2008,49 @@
             button.title = this.buildButtonTitle();
             button.addEventListener('click', () => this.toggle());
 
-            panelButtons.insertBefore(button, panelButtons.firstChild);
+            const wrapper = document.createElement('div');
+            wrapper.className = 'hdw-overlay-toggle-wrap';
+
+            const settingsPopup = this.createSettingsPopup();
+            wrapper.appendChild(settingsPopup);
+            wrapper.appendChild(button);
+
+            panelButtons.insertBefore(wrapper, panelButtons.firstChild);
+        }
+
+        createSettingsPopup() {
+            const popup = document.createElement('div');
+            popup.id = 'hdw-overlay-settings-popup';
+
+            const title = document.createElement('span');
+            title.className = 'hdw-overlay-settings-title';
+            title.textContent = 'Показывать в оверлее';
+            popup.appendChild(title);
+
+            popup.appendChild(this.createSettingsToggle('showTitle', 'Название тайтла'));
+            popup.appendChild(this.createSettingsToggle('showSeasonEpisode', 'Сезон и серия'));
+            popup.appendChild(this.createSettingsToggle('showProgress', 'Прогресс просмотра'));
+
+            return popup;
+        }
+
+        createSettingsToggle(settingKey, labelText) {
+            const label = document.createElement('label');
+            label.className = 'hdw-overlay-settings-item';
+
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.checked = !!this.displaySettings[settingKey];
+            input.addEventListener('change', () => {
+                this.updateDisplaySetting(settingKey, input.checked);
+            });
+
+            const text = document.createElement('span');
+            text.textContent = labelText;
+
+            label.appendChild(input);
+            label.appendChild(text);
+            return label;
         }
 
         startVideoScan() {
@@ -2082,11 +2223,10 @@
             return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
         }
 
-        buildHeaderText() {
-            const title = (document.querySelector(config.selectors.title)?.textContent || '').trim() || 'Без названия';
+        buildSeasonEpisodeText() {
+            const parts = [];
             const seasonInfo = MovieParser.parseSeasonInfo();
             const episodeInfo = MovieParser.parseEpisodeInfo();
-            const parts = [];
 
             if (seasonInfo) {
                 if (seasonInfo.id && seasonInfo.name) {
@@ -2104,7 +2244,25 @@
                 }
             }
 
-            return parts.length ? `${title} • ${parts.join(', ')}` : title;
+            return parts.join(', ');
+        }
+
+        buildHeaderText() {
+            const title = (document.querySelector(config.selectors.title)?.textContent || '').trim() || 'Без названия';
+            const seasonEpisodeText = this.buildSeasonEpisodeText();
+            const showTitle = this.displaySettings.showTitle;
+            const showSeasonEpisode = this.displaySettings.showSeasonEpisode;
+
+            if (showTitle && showSeasonEpisode && seasonEpisodeText) {
+                return `${title} • ${seasonEpisodeText}`;
+            }
+            if (showTitle) {
+                return title;
+            }
+            if (showSeasonEpisode) {
+                return seasonEpisodeText;
+            }
+            return '';
         }
 
         buildTimeText(video) {
@@ -2140,9 +2298,15 @@
             }
 
             const video = this.currentVideo;
-            this.titleNode.textContent = this.buildHeaderText();
-            this.timeNode.textContent = this.buildTimeText(video);
-            this.setOverlayVisible(this.enabled);
+            const headerText = this.buildHeaderText();
+            const timeText = this.displaySettings.showProgress ? this.buildTimeText(video) : '';
+
+            this.titleNode.textContent = headerText;
+            this.timeNode.textContent = timeText;
+            this.titleNode.style.display = headerText ? 'block' : 'none';
+            this.timeNode.style.display = timeText ? 'block' : 'none';
+
+            this.setOverlayVisible(this.enabled && (headerText || timeText));
         }
 
         buildButtonTitle() {
@@ -2706,7 +2870,7 @@
     const playerEnhancements = new TheaterModeModule(
         new AudioCompressorModule(config.compressorStorageKey),
         new VideoEffectsModule(),
-        new PlaybackInfoOverlayModule(config.overlayStorageKey),
+        new PlaybackInfoOverlayModule(config.overlayStorageKey, config.overlayDisplayStorageKey),
         translatorsPanel
     );
 
