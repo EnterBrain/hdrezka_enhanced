@@ -1,6 +1,6 @@
-(function (global) {
+﻿(function (global) {
     'use strict';
-    const HDREZKA_CORE_VERSION = '2026.02.19.161609-0bb8903'; // auto-updated by git hook
+    const HDREZKA_CORE_VERSION = '2026.02.19.164040.896-731c6ad'; // auto-updated by git hook
 
     function runHdrezkaCore() {
     'use strict';
@@ -3774,5 +3774,7 @@
     global.__HDREZKA_CORE_VERSION__ = HDREZKA_CORE_VERSION;
     global.__HDREZKA_CORE__ = runHdrezkaCore;
 })(typeof globalThis !== 'undefined' ? globalThis : window);
+
+
 
 
