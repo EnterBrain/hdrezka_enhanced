@@ -34,6 +34,25 @@
 3. Откройте сайт HDRezka или зеркало.
 4. При необходимости добавьте личное зеркало через меню расширения.
 
+## Автоверсия `hdrezka-core.js`
+
+- В `hdrezka-core.js` есть константа `HDREZKA_CORE_VERSION`.
+- При каждом `git commit` pre-commit hook обновляет её автоматически и добавляет файл в индекс.
+- При запуске core версия выводится в консоль браузера:
+  - `[HDRezka Core] version <значение>`
+
+### Включить hook один раз
+
+```powershell
+pwsh -File scripts/setup-git-hooks.ps1
+```
+
+Если `pwsh` недоступен:
+
+```powershell
+powershell -File scripts/setup-git-hooks.ps1
+```
+
 ## Лицензия
 
 MIT
