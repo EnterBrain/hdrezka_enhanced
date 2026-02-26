@@ -1,6 +1,6 @@
 (function (global) {
     'use strict';
-    const HDREZKA_CORE_VERSION = '2026.02.26.171151.665-203a121'; // auto-updated by git hook
+    const HDREZKA_CORE_VERSION = '2026.02.26.172648.917-ee367e6'; // auto-updated by git hook
 
     function runHdrezkaCore() {
     'use strict';
@@ -2487,7 +2487,11 @@
                 return;
             }
 
-            const titleText = this.titleEl.textContent.replace(/\s+/g, ' ').trim() || 'Озвучка:';
+            const titleClone = this.titleEl.cloneNode(true);
+            titleClone.querySelectorAll('span.b-rgstats__help').forEach((node) => node.remove());
+            const titleText = (titleClone.textContent || '')
+                .replace(/\s+/g, ' ')
+                .trim() || 'Озвучка:';
             this.titleEl.classList.add('hdw-translators-title');
             this.titleEl.textContent = '';
 
@@ -3809,6 +3813,7 @@
     global.__HDREZKA_CORE_VERSION__ = HDREZKA_CORE_VERSION;
     global.__HDREZKA_CORE__ = runHdrezkaCore;
 })(typeof globalThis !== 'undefined' ? globalThis : window);
+
 
 
 
