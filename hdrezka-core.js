@@ -1,6 +1,6 @@
 (function (global) {
     'use strict';
-    const HDREZKA_CORE_VERSION = '2026.02.19.165106.915-d77f935'; // auto-updated by git hook
+    const HDREZKA_CORE_VERSION = '2026.02.26.171151.665-203a121'; // auto-updated by git hook
 
     function runHdrezkaCore() {
     'use strict';
@@ -2636,6 +2636,7 @@
             this.mutationObservers = [];
             this.layoutRaf = null;
             this.hotkeysHandler = null;
+            this.hiddenSimpleSeasonsTabsByTheater = false;
             this.initialized = false;
         }
 
@@ -2933,6 +2934,38 @@
             }
         }
 
+        toggleSimpleSeasonsTabsForTheater(shouldHide) {
+            const tabs = document.getElementById('simple-seasons-tabs');
+            if (!tabs) {
+                return;
+            }
+
+            if (shouldHide) {
+                const seasonItems = tabs.querySelectorAll('li.b-simple_season__item');
+                const shouldHideTabs = seasonItems.length === 1 && seasonItems[0].classList.contains('active');
+                if (!shouldHideTabs || this.hiddenSimpleSeasonsTabsByTheater) {
+                    return;
+                }
+
+                tabs.dataset.hdwTheaterPrevDisplay = tabs.style.display || '';
+                tabs.style.display = 'none';
+                this.hiddenSimpleSeasonsTabsByTheater = true;
+                return;
+            }
+
+            if (!this.hiddenSimpleSeasonsTabsByTheater) {
+                return;
+            }
+
+            if (Object.prototype.hasOwnProperty.call(tabs.dataset, 'hdwTheaterPrevDisplay')) {
+                tabs.style.display = tabs.dataset.hdwTheaterPrevDisplay;
+                delete tabs.dataset.hdwTheaterPrevDisplay;
+            } else {
+                tabs.style.removeProperty('display');
+            }
+            this.hiddenSimpleSeasonsTabsByTheater = false;
+        }
+
         enableTheaterMode() {
             const translatorsBlock = document.querySelector('.b-translators__block');
             const playerBlock = document.querySelector('#player')?.closest('div[class^="b-post__"]');
@@ -2950,6 +2983,7 @@
             this.scheduleTheaterLayout();
             setTimeout(() => this.updateTheaterLayoutVars(), 0);
             setTimeout(() => this.updateTheaterLayoutVars(), 120);
+            this.toggleSimpleSeasonsTabsForTheater(true);
             this.updateButtonState();
         }
 
@@ -2970,6 +3004,7 @@
             document.body.style.removeProperty('--hdw-player-box-height');
             document.body.style.removeProperty('--hdw-player-aspect-ratio');
             this.applyAspectRatioCssVar();
+            this.toggleSimpleSeasonsTabsForTheater(false);
             this.updateButtonState();
             this.updateAspectRatioButtonState();
         }
@@ -3774,6 +3809,7 @@
     global.__HDREZKA_CORE_VERSION__ = HDREZKA_CORE_VERSION;
     global.__HDREZKA_CORE__ = runHdrezkaCore;
 })(typeof globalThis !== 'undefined' ? globalThis : window);
+
 
 
 
