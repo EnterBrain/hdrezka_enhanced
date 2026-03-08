@@ -1,6 +1,6 @@
 (function (global) {
     'use strict';
-    const HDREZKA_CORE_VERSION = '2026.02.26.172648.917-ee367e6'; // auto-updated by git hook
+    const HDREZKA_CORE_VERSION = '2026.03.08.160200.888-7b39440'; // auto-updated by git hook
 
     function runHdrezkaCore() {
     'use strict';
@@ -2844,14 +2844,16 @@
             const translatorsBlock = document.querySelector('.b-translators__block');
             const playerBlock = document.querySelector('.hdw-theater-player-block');
 
-            if (!body || !translatorsBlock || !playerBlock) {
+            if (!body || !playerBlock) {
                 return;
             }
 
             const topOffset = 10;
             const bottomOffset = 10;
             const gap = 0;
-            const translatorsHeight = Math.ceil(translatorsBlock.getBoundingClientRect().height || 0);
+            const translatorsHeight = translatorsBlock
+                ? Math.ceil(translatorsBlock.getBoundingClientRect().height || 0)
+                : 0;
             const availableHeight = Math.max(
                 220,
                 Math.floor(window.innerHeight - topOffset - bottomOffset - translatorsHeight - gap * 2)
@@ -2971,9 +2973,8 @@
         }
 
         enableTheaterMode() {
-            const translatorsBlock = document.querySelector('.b-translators__block');
             const playerBlock = document.querySelector('#player')?.closest('div[class^="b-post__"]');
-            if (!translatorsBlock || !playerBlock) {
+            if (!playerBlock) {
                 return;
             }
 
@@ -3813,6 +3814,7 @@
     global.__HDREZKA_CORE_VERSION__ = HDREZKA_CORE_VERSION;
     global.__HDREZKA_CORE__ = runHdrezkaCore;
 })(typeof globalThis !== 'undefined' ? globalThis : window);
+
 
 
 
