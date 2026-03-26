@@ -2,6 +2,11 @@ SVG icons for HDRezka player control buttons.
 
 Prepared icons:
 - `watchlist.svg`
+- `watchlist_favorite.svg`
+- `watchlist_watching.svg`
+- `watchlist_later.svg`
+- `watchlist_completed.svg`
+- `watchlist_abandoned.svg`
 - `theater-mode.svg`
 - `audio-compressor.svg`
 - `video-blur.svg`

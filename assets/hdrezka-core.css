@@ -383,6 +383,23 @@
             white-space: nowrap;
         }
 
+        .hdw-inline-state-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 14px;
+            height: 14px;
+            flex: 0 0 14px;
+        }
+
+        .hdw-inline-state-icon svg {
+            width: 14px;
+            height: 14px;
+            display: block;
+            fill: none;
+            stroke: currentColor;
+        }
+
         body.b-theme__template__night #watchlist-content .watchlist-status-badge {
             background: rgba(100, 181, 246, 0.12);
             color: #d9ecff;
@@ -396,6 +413,9 @@
         }
 
         .watchlist-status-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
             border: 1px solid rgba(52, 152, 219, 0.22);
             border-radius: 999px;
             background: rgba(52, 152, 219, 0.08);
@@ -631,8 +651,16 @@
             align-items: center;
             justify-content: center;
             width: 22px;
+            height: 22px;
             flex: 0 0 22px;
-            font-size: 15px;
+        }
+
+        .hdw-watchlist-status-icon svg {
+            width: 18px;
+            height: 18px;
+            display: block;
+            fill: none;
+            stroke: currentColor;
         }
 
         .hdw-watchlist-status-text {

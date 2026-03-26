@@ -697,11 +697,11 @@
     const VALID_LIST_STATES = new Set(Object.values(LIST_STATES));
 
     const LIST_STATE_OPTIONS = Object.freeze([
-        Object.freeze({ value: LIST_STATES.favorite, label: 'В избранное', icon: '★' }),
-        Object.freeze({ value: LIST_STATES.watching, label: 'Смотрю', icon: '▶' }),
-        Object.freeze({ value: LIST_STATES.later, label: 'Смотреть позже', icon: '⏳' }),
-        Object.freeze({ value: LIST_STATES.completed, label: 'Просмотрено', icon: '✓' }),
-        Object.freeze({ value: LIST_STATES.abandoned, label: 'Брошено', icon: '✕' })
+        Object.freeze({ value: LIST_STATES.favorite, label: 'В избранное', textIcon: '★', panelIconKey: 'watchlistFavorite', spriteIconId: 'hdw-icon-watchlist_favorite' }),
+        Object.freeze({ value: LIST_STATES.watching, label: 'Смотрю', textIcon: '▶', panelIconKey: 'watchlistWatching', spriteIconId: 'hdw-icon-watchlist_watching' }),
+        Object.freeze({ value: LIST_STATES.later, label: 'Смотреть позже', textIcon: '⏳', panelIconKey: 'watchlistLater', spriteIconId: 'hdw-icon-watchlist_later' }),
+        Object.freeze({ value: LIST_STATES.completed, label: 'Просмотрено', textIcon: '✓', panelIconKey: 'watchlistCompleted', spriteIconId: 'hdw-icon-watchlist_completed' }),
+        Object.freeze({ value: LIST_STATES.abandoned, label: 'Брошено', textIcon: '✕', panelIconKey: 'watchlistAbandoned', spriteIconId: 'hdw-icon-watchlist_abandoned' })
     ]);
 
     const ASPECT_RATIO_OPTIONS = Object.freeze([
@@ -767,6 +767,19 @@
     function getListStateOption(listState) {
         const normalized = normalizeListState(listState, null);
         return LIST_STATE_OPTIONS.find((option) => option.value === normalized) || null;
+    }
+
+    function getListStatePanelIconKey(listState) {
+        return getListStateOption(listState)?.panelIconKey || 'watchlist';
+    }
+
+    function buildSpriteIconMarkup(symbolId, className = '') {
+        if (!symbolId) {
+            return '';
+        }
+
+        const classAttribute = className ? ` class="${escapeHtml(className)}"` : '';
+        return `<span${classAttribute} aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><use href="#${escapeHtml(symbolId)}" xlink:href="#${escapeHtml(symbolId)}"></use></svg></span>`;
     }
 
     const COMPRESSOR_PARAMETER_SCHEMA = Object.freeze({
@@ -1006,6 +1019,11 @@
 
     const PANEL_BUTTON_ICON_IDS = Object.freeze({
         watchlist: 'hdw-icon-watchlist',
+        watchlistFavorite: 'hdw-icon-watchlist_favorite',
+        watchlistWatching: 'hdw-icon-watchlist_watching',
+        watchlistLater: 'hdw-icon-watchlist_later',
+        watchlistCompleted: 'hdw-icon-watchlist_completed',
+        watchlistAbandoned: 'hdw-icon-watchlist_abandoned',
         theater: 'hdw-icon-theater-mode',
         compressor: 'hdw-icon-audio-compressor',
         blur: 'hdw-icon-video-blur',
@@ -3292,6 +3310,7 @@
         static renderItems(filter = '') {
             const itemsContainer = document.getElementById('watchlist-items');
             if (!itemsContainer) return;
+            ensurePanelButtonSpriteLoaded();
             
             const items = BookmarkManager.getAll();
             let filteredItems = items;
@@ -3367,7 +3386,7 @@
                                             data-id="${safeId}"
                                             data-list-state="${escapeHtml(option.value)}"
                                             class="watchlist-status-btn${currentListState === option.value ? ' hdw-active' : ''}"
-                                        >${escapeHtml(option.icon)} ${escapeHtml(option.label)}</button>
+                                        >${buildSpriteIconMarkup(option.spriteIconId, 'hdw-inline-state-icon')}<span>${escapeHtml(option.label)}</span></button>
                                     `).join('')}
                                 </div>
                                 <button data-id="${safeId}" class="btn btn-danger remove-btn">🗑️ Удалить</button>
@@ -3442,7 +3461,7 @@
             }
 
             summaryElement.innerHTML = counts.map(({ option, count }) => `
-                <span class="watchlist-status-badge">${escapeHtml(option.icon)} ${escapeHtml(option.label)}: ${count}</span>
+                <span class="watchlist-status-badge">${buildSpriteIconMarkup(option.spriteIconId, 'hdw-inline-state-icon')}<span>${escapeHtml(option.label)}: ${count}</span></span>
             `).join('');
         }
         
@@ -3538,6 +3557,7 @@
 
             if (button.id === 'player-watchlist-status-btn') {
                 const option = getListStateOption(listState);
+                applyPanelButtonIcon(button, getListStatePanelIconKey(listState), { offsetLeft: true });
                 button.classList.toggle('hdw-active', !!option);
                 button.title = option
                     ? `Статус в списке: ${option.label}`
@@ -3608,6 +3628,7 @@
 
             const list = document.createElement('div');
             list.className = 'hdw-watchlist-status-list';
+            ensurePanelButtonSpriteLoaded();
 
             const refreshPopupState = () => {
                 const currentState = BookmarkManager.getListState(window.location.href);
@@ -3627,7 +3648,7 @@
                 itemButton.className = 'hdw-watchlist-status-item';
                 itemButton.dataset.listState = option.value;
                 itemButton.innerHTML = `
-                    <span class="hdw-watchlist-status-icon">${escapeHtml(option.icon)}</span>
+                    ${buildSpriteIconMarkup(option.spriteIconId, 'hdw-watchlist-status-icon')}
                     <span class="hdw-watchlist-status-text">${escapeHtml(option.label)}</span>
                 `;
                 itemButton.addEventListener('click', () => {
@@ -3701,7 +3722,7 @@
             const button = document.createElement('button');
             button.id = 'player-watchlist-status-btn';
             button.type = 'button';
-            applyPanelButtonIcon(button, 'watchlist', { offsetLeft: true });
+            applyPanelButtonIcon(button, getListStatePanelIconKey(BookmarkManager.getListState(window.location.href)), { offsetLeft: true });
 
             const bookmarkControl = this.createWatchlistStatusPopup(
                 button,
