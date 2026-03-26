@@ -819,18 +819,32 @@
             height: 38px;
             margin: 0;
             outline: 0;
-            width: 54px;
-            padding: 0 14px 0 0;
+            width: 58px;
+            padding: 0 18px 0 0;
             box-sizing: border-box;
             font-size: 0;
             cursor: pointer;
             line-height: normal !important;
         }
 
+        #player-watchlist-status-btn::before,
+        #audio-compressor-toggle-btn::before,
+        #playback-info-overlay-toggle-btn::before,
+        #player-aspect-ratio-toggle-btn::before {
+            content: '';
+            position: absolute;
+            top: 8px;
+            bottom: 8px;
+            right: 18px;
+            width: 1px;
+            background: rgba(255, 255, 255, 0.16);
+            pointer-events: none;
+        }
+
         #player-watchlist-status-btn::after {
             content: '';
             position: absolute;
-            right: 9px;
+            right: 8px;
             top: 50%;
             width: 6px;
             height: 6px;
@@ -981,20 +995,21 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 18px;
-            height: 18px;
+            width: 30px;
+            height: 30px;
             pointer-events: none;
         }
 
         .hdw-panel-button-icon.hdw-offset-left {
-            transform: translateX(-4px);
+            transform: translateX(-3px);
         }
 
         .hdw-panel-button-icon svg {
             display: block;
-            width: 18px;
-            height: 18px;
+            width: 30px;
+            height: 30px;
             overflow: visible;
+            shape-rendering: geometricPrecision;
         }
 
         #theater-mode-toggle-btn:hover,
@@ -1018,35 +1033,49 @@
         }
 
         #player-aspect-ratio-toggle-btn {
-            background: rgba(255, 255, 255, 0.06);
-            color: #d7e7f6;
+            background: var(--hdw-panel-button-bg);
+            color: var(--hdw-panel-button-text);
             border: 0;
             border-radius: var(--hdw-panel-button-radius);
             transition: background-color .2s linear, color .2s linear, box-shadow .2s linear, filter .2s linear;
             height: 38px;
             margin: 0;
             outline: 0;
-            min-width: 72px;
-            padding: 0 22px 0 10px;
+            width: auto;
+            min-width: 0;
+            padding: 0 28px 0 12px;
+            box-sizing: border-box;
             font-size: 12px;
             font-weight: 700;
             cursor: pointer;
             line-height: 38px;
             position: relative;
-            box-shadow: inset 0 0 0 1px rgba(95, 169, 224, 0.28);
+            text-align: left;
         }
 
         #player-aspect-ratio-toggle-btn:hover {
+            background: var(--hdw-panel-button-hover-bg);
+            color: #fff;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+            filter: saturate(1.2);
+        }
+
+        #player-aspect-ratio-toggle-btn.hdw-panel-popup-text-trigger {
+            background: rgba(255, 255, 255, 0.06);
+            color: #d7e7f6;
+            box-shadow: inset 0 0 0 1px rgba(95, 169, 224, 0.28);
+        }
+
+        #player-aspect-ratio-toggle-btn.hdw-panel-popup-text-trigger:hover {
             background: rgba(31, 97, 141, 0.18);
             color: #fff;
             box-shadow: inset 0 0 0 1px rgba(95, 169, 224, 0.48);
-            filter: saturate(1.2);
         }
 
         #player-aspect-ratio-toggle-btn::after {
             content: '';
             position: absolute;
-            right: 9px;
+            right: 8px;
             top: 50%;
             width: 6px;
             height: 6px;
@@ -1142,14 +1171,14 @@
 
         #audio-compressor-toggle-btn {
             position: relative;
-            width: 54px;
-            padding: 0 14px 0 0;
+            width: 58px;
+            padding: 0 18px 0 0;
         }
 
         #audio-compressor-toggle-btn::after {
             content: '';
             position: absolute;
-            right: 9px;
+            right: 8px;
             top: 50%;
             width: 6px;
             height: 6px;
@@ -1531,14 +1560,14 @@
 
         #playback-info-overlay-toggle-btn {
             position: relative;
-            width: 54px;
-            padding: 0 14px 0 0;
+            width: 58px;
+            padding: 0 18px 0 0;
         }
 
         #playback-info-overlay-toggle-btn::after {
             content: '';
             position: absolute;
-            right: 9px;
+            right: 8px;
             top: 50%;
             width: 6px;
             height: 6px;
@@ -2845,74 +2874,90 @@
 
     const popupClickControllers = new Set();
 
-    const PANEL_BUTTON_ICONS = Object.freeze({
-        watchlist: `
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M12 20.5 5.8 14.6a4.53 4.53 0 0 1 6.2-6.58A4.53 4.53 0 0 1 18.2 14.6L12 20.5Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-        `,
-        theater: `
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M7 5H4v3M17 5h3v3M7 19H4v-3M17 19h3v-3" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M8.5 8.5h7v7h-7z" fill="none" stroke="currentColor" stroke-width="1.7" opacity=".85"/>
-            </svg>
-        `,
-        compressor: `
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity=".94">
-                    <path d="M10.5 5.2v2.1M13.5 5.2v2.1" opacity=".78"/>
-                    <path d="M7.5 8.2v2.4M10.5 8.2v2.4M13.5 8.2v2.4M16.5 8.2v2.4" opacity=".84"/>
-                    <path d="M4.5 11.2v2.6M7.5 11.2v2.6M10.5 11.2v2.6M13.5 11.2v2.6M16.5 11.2v2.6M19.5 11.2v2.6"/>
-                    <path d="M7.5 14.4v2.4M10.5 14.4v2.4M13.5 14.4v2.4M16.5 14.4v2.4" opacity=".84"/>
-                    <path d="M10.5 17.5v2.1M13.5 17.5v2.1" opacity=".78"/>
-                </g>
-            </svg>
-        `,
-        blur: `
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <circle cx="10.5" cy="4.5" r="0.85" fill="currentColor" opacity=".78"/>
-                <circle cx="13.5" cy="4.5" r="0.85" fill="currentColor" opacity=".78"/>
-                <circle cx="7.5" cy="7.5" r="1.15" fill="currentColor" opacity=".84"/>
-                <circle cx="10.5" cy="7.5" r="1.15" fill="currentColor" opacity=".9"/>
-                <circle cx="13.5" cy="7.5" r="1.15" fill="currentColor" opacity=".9"/>
-                <circle cx="16.5" cy="7.5" r="1.15" fill="currentColor" opacity=".84"/>
-                <circle cx="4.5" cy="10.5" r="0.85" fill="currentColor" opacity=".78"/>
-                <circle cx="7.5" cy="10.5" r="1.15" fill="currentColor" opacity=".9"/>
-                <circle cx="10.5" cy="10.5" r="1.45" fill="currentColor"/>
-                <circle cx="13.5" cy="10.5" r="1.45" fill="currentColor"/>
-                <circle cx="16.5" cy="10.5" r="1.15" fill="currentColor" opacity=".9"/>
-                <circle cx="19.5" cy="10.5" r="0.85" fill="currentColor" opacity=".78"/>
-                <circle cx="4.5" cy="13.5" r="0.85" fill="currentColor" opacity=".78"/>
-                <circle cx="7.5" cy="13.5" r="1.15" fill="currentColor" opacity=".9"/>
-                <circle cx="10.5" cy="13.5" r="1.45" fill="currentColor"/>
-                <circle cx="13.5" cy="13.5" r="1.45" fill="currentColor"/>
-                <circle cx="16.5" cy="13.5" r="1.15" fill="currentColor" opacity=".9"/>
-                <circle cx="19.5" cy="13.5" r="0.85" fill="currentColor" opacity=".78"/>
-                <circle cx="7.5" cy="16.5" r="1.15" fill="currentColor" opacity=".84"/>
-                <circle cx="10.5" cy="16.5" r="1.15" fill="currentColor" opacity=".9"/>
-                <circle cx="13.5" cy="16.5" r="1.15" fill="currentColor" opacity=".9"/>
-                <circle cx="16.5" cy="16.5" r="1.15" fill="currentColor" opacity=".84"/>
-                <circle cx="10.5" cy="19.5" r="0.85" fill="currentColor" opacity=".78"/>
-                <circle cx="13.5" cy="19.5" r="0.85" fill="currentColor" opacity=".78"/>
-            </svg>
-        `,
-        mirror: `
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M12 5v14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity=".9"/>
-                <path d="M9.5 7H6.5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h3" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M14.5 7h3a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-3" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-        `,
-        overlay: `
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <rect x="5" y="6" width="14" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.9"/>
-                <path d="M8 10h4M8 13h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity=".95"/>
-            </svg>
-        `
+    const PANEL_BUTTON_ICON_IDS = Object.freeze({
+        watchlist: 'hdw-icon-watchlist',
+        theater: 'hdw-icon-theater-mode',
+        compressor: 'hdw-icon-audio-compressor',
+        blur: 'hdw-icon-video-blur',
+        mirror: 'hdw-icon-video-mirror',
+        overlay: 'hdw-icon-playback-overlay'
     });
 
+    let panelButtonSpriteLoadPromise = null;
+
+    function getCoreBaseUrl() {
+        const globalBaseUrl = typeof globalThis !== 'undefined' && typeof globalThis.__HDREZKA_CORE_BASE_URL__ === 'string'
+            ? globalThis.__HDREZKA_CORE_BASE_URL__
+            : '';
+        const raw = globalBaseUrl || (typeof HDREZKA_CORE_BASE_URL === 'string' ? HDREZKA_CORE_BASE_URL : '');
+        return raw ? raw.replace(/\/?$/, '/') : '';
+    }
+
+    function fetchTextByUrl(url) {
+        return new Promise((resolve) => {
+            if (!url) {
+                resolve('');
+                return;
+            }
+
+            const request = (typeof GM_xmlhttpRequest === 'function')
+                ? GM_xmlhttpRequest
+                : (typeof globalThis !== 'undefined' && typeof globalThis.__HDREZKA_GM_XMLHTTPREQUEST__ === 'function'
+                    ? globalThis.__HDREZKA_GM_XMLHTTPREQUEST__
+                    : null);
+
+            if (request) {
+                request({
+                    method: 'GET',
+                    url,
+                    onload: (response) => resolve(String(response?.responseText || '')),
+                    onerror: () => resolve(''),
+                    ontimeout: () => resolve('')
+                });
+                return;
+            }
+
+            fetch(url)
+                .then((response) => response.ok ? response.text() : '')
+                .then(resolve)
+                .catch(() => resolve(''));
+        });
+    }
+
+    function ensurePanelButtonSpriteLoaded() {
+        if (document.getElementById('hdw-panel-icons-sprite')) {
+            return Promise.resolve(true);
+        }
+
+        if (!panelButtonSpriteLoadPromise) {
+            const url = `${getCoreBaseUrl()}assets/player-controls-icons-sprite.svg`;
+            panelButtonSpriteLoadPromise = fetchTextByUrl(url).then((markup) => {
+                const text = String(markup || '').trim();
+                if (!text) {
+                    return false;
+                }
+
+                if (document.getElementById('hdw-panel-icons-sprite')) {
+                    return true;
+                }
+
+                const host = document.createElement('div');
+                host.id = 'hdw-panel-icons-sprite';
+                host.hidden = true;
+                host.style.display = 'none';
+                host.setAttribute('aria-hidden', 'true');
+                host.innerHTML = text;
+                document.body.appendChild(host);
+                return true;
+            }).catch(() => false);
+        }
+
+        return panelButtonSpriteLoadPromise;
+    }
+
     function applyPanelButtonIcon(button, iconKey, options = {}) {
-        if (!button || !iconKey || !PANEL_BUTTON_ICONS[iconKey]) {
+        const symbolId = PANEL_BUTTON_ICON_IDS[iconKey];
+        if (!button || !iconKey || !symbolId) {
             return;
         }
 
@@ -2923,10 +2968,21 @@
         if (options.offsetLeft) {
             icon.classList.add('hdw-offset-left');
         }
-        icon.innerHTML = PANEL_BUTTON_ICONS[iconKey].trim();
-        button.appendChild(icon);
-    }
 
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('focusable', 'false');
+
+        const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+        use.setAttribute('href', `#${symbolId}`);
+        use.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${symbolId}`);
+        svg.appendChild(use);
+        icon.appendChild(svg);
+        button.appendChild(icon);
+
+        ensurePanelButtonSpriteLoaded();
+    }
     function bindPopupClickToggle(wrapper, trigger, popup, options = {}) {
         if (!wrapper || !trigger || !popup) {
             return { open() {}, close() {}, isOpen() { return false; } };
@@ -4676,11 +4732,11 @@
             const button = document.createElement('button');
             button.id = 'player-aspect-ratio-toggle-btn';
             button.type = 'button';
+            button.className = 'hdw-panel-popup-text-trigger';
             button.title = `Соотношение сторон плеера: ${this.aspectRatioMode}`;
 
             const wrapper = document.createElement('div');
             wrapper.className = 'hdw-aspect-ratio-wrap';
-            markPanelControlGroup(wrapper, 'secondary');
 
             const popup = this.createAspectRatioPopup();
             wrapper.appendChild(popup);
