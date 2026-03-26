@@ -1,6 +1,6 @@
 (function (global) {
     'use strict';
-    const HDREZKA_CORE_VERSION = '2026.03.26.212134.438-870cb67'; // auto-updated by git hook
+    const HDREZKA_CORE_VERSION = '2026.03.27.000132.132-40a81b0'; // auto-updated by git hook
 
     function runHdrezkaCore() {
     'use strict';
@@ -1254,17 +1254,130 @@
         return buttons;
     }
 
-    function markPanelControlGroup(element, groupName, options = {}) {
-        if (!element) {
+    function normalizePanelGroupName(groupName) {
+        return ['secondary', 'tertiary'].includes(groupName) ? groupName : 'primary';
+    }
+
+    function resolvePlayerControlsPanelButtons(container) {
+        if (!container) {
+            return null;
+        }
+
+        if (container.classList?.contains('hdw-player-controls-panel-buttons')) {
+            return container;
+        }
+
+        return container.closest?.('.hdw-player-controls-panel-buttons') || null;
+    }
+
+    function ensurePlayerControlsPanelGroups(panelButtons) {
+        panelButtons = resolvePlayerControlsPanelButtons(panelButtons);
+        if (!panelButtons) {
+            return null;
+        }
+
+        if (panelButtons.querySelector('.hdw-player-controls-group')) {
+            return panelButtons;
+        }
+
+        const groupNames = ['primary', 'secondary', 'tertiary'];
+        groupNames.forEach((groupName, index) => {
+            const group = document.createElement('div');
+            group.className = `hdw-player-controls-group hdw-player-controls-group-${groupName}`;
+            group.dataset.group = groupName;
+            panelButtons.appendChild(group);
+
+            if (index < groupNames.length - 1) {
+                const divider = document.createElement('div');
+                divider.className = 'hdw-player-controls-divider';
+                divider.dataset.beforeGroup = groupNames[index + 1];
+                panelButtons.appendChild(divider);
+            }
+        });
+
+        return panelButtons;
+    }
+
+    function getPlayerControlsGroupContainer(panelButtons, groupName) {
+        panelButtons = resolvePlayerControlsPanelButtons(panelButtons);
+        if (!panelButtons) {
+            return null;
+        }
+
+        ensurePlayerControlsPanelGroups(panelButtons);
+        const normalizedGroup = normalizePanelGroupName(groupName);
+        return panelButtons.querySelector(`.hdw-player-controls-group[data-group="${normalizedGroup}"]`);
+    }
+
+    function getPanelControlOrder(element) {
+        return Number(element?.dataset?.panelOrder || 0);
+    }
+
+    function mountPanelControl(panelButtons, element, groupName, order) {
+        panelButtons = resolvePlayerControlsPanelButtons(panelButtons);
+        if (!panelButtons || !element) {
             return element;
         }
 
-        const normalizedGroup = groupName === 'secondary' ? 'secondary' : 'primary';
-        element.classList.add(`hdw-panel-${normalizedGroup}`);
-        if (options.isGroupStart) {
-            element.classList.add('hdw-panel-group-start');
+        const normalizedGroup = normalizePanelGroupName(groupName);
+        const groupContainer = getPlayerControlsGroupContainer(panelButtons, normalizedGroup);
+        if (!groupContainer) {
+            return element;
         }
+
+        element.classList.add(`hdw-panel-${normalizedGroup}`);
+        element.dataset.panelGroup = normalizedGroup;
+        element.dataset.panelOrder = String(order || 0);
+
+        const siblings = Array.from(groupContainer.children);
+        const nextSibling = siblings.find((child) => getPanelControlOrder(child) > getPanelControlOrder(element));
+        if (nextSibling) {
+            groupContainer.insertBefore(element, nextSibling);
+        } else {
+            groupContainer.appendChild(element);
+        }
+
+        syncPlayerControlsPanelGroupStarts(panelButtons);
         return element;
+    }
+
+    function getPanelGroupVisibleItems(groupContainer) {
+        if (!groupContainer) {
+            return [];
+        }
+
+        return Array.from(groupContainer.children)
+            .filter((element) => {
+                if (element.hidden) {
+                    return false;
+                }
+
+                const style = window.getComputedStyle(element);
+                return style.display !== 'none' && style.visibility !== 'hidden';
+            })
+            .sort((left, right) => getPanelControlOrder(left) - getPanelControlOrder(right));
+    }
+
+    function syncPlayerControlsPanelGroupStarts(panelButtons = document.querySelector('.hdw-player-controls-panel-buttons')) {
+        panelButtons = resolvePlayerControlsPanelButtons(panelButtons);
+        if (!panelButtons) {
+            return;
+        }
+
+        ensurePlayerControlsPanelGroups(panelButtons);
+        const primaryVisible = getPanelGroupVisibleItems(getPlayerControlsGroupContainer(panelButtons, 'primary'));
+        const secondaryVisible = getPanelGroupVisibleItems(getPlayerControlsGroupContainer(panelButtons, 'secondary'));
+        const tertiaryVisible = getPanelGroupVisibleItems(getPlayerControlsGroupContainer(panelButtons, 'tertiary'));
+        const dividerBeforeSecondary = panelButtons.querySelector('.hdw-player-controls-divider[data-before-group="secondary"]');
+        const dividerBeforeTertiary = panelButtons.querySelector('.hdw-player-controls-divider[data-before-group="tertiary"]');
+
+        if (dividerBeforeSecondary) {
+            dividerBeforeSecondary.hidden = !(primaryVisible.length > 0 && secondaryVisible.length > 0);
+        }
+
+        if (dividerBeforeTertiary) {
+            dividerBeforeTertiary.hidden = !((primaryVisible.length > 0 || secondaryVisible.length > 0) && tertiaryVisible.length > 0);
+        }
     }
 
     function bindPopupHoverPersistence(wrapper, popup) {
@@ -1496,6 +1609,21 @@
         return controller;
     }
 
+    function centerActivePanelListItem(listEl, activeSelector = '.hdw-translators-panel-item.hdw-active') {
+        if (!listEl) {
+            return;
+        }
+
+        const activeButton = listEl.querySelector(activeSelector);
+        if (!activeButton) {
+            return;
+        }
+
+        const targetScrollTop = activeButton.offsetTop - (listEl.clientHeight / 2) + (activeButton.offsetHeight / 2);
+        const maxScrollTop = Math.max(0, listEl.scrollHeight - listEl.clientHeight);
+        listEl.scrollTop = Math.max(0, Math.min(targetScrollTop, maxScrollTop));
+    }
+
     class AudioCompressorModule {
         constructor(storageKey, settingsStorageKey) {
             this.storageKey = storageKey;
@@ -1621,7 +1749,7 @@
             wrapper.appendChild(button);
             this.popupController = bindPopupClickToggle(wrapper, button, popup);
 
-            panelButtons.insertBefore(wrapper, panelButtons.firstChild);
+            mountPanelControl(panelButtons, wrapper, 'secondary', 140);
             this.updatePopupState();
         }
 
@@ -2233,7 +2361,7 @@
                 mirrorButton.type = 'button';
                 applyPanelButtonIcon(mirrorButton, 'mirror');
                 mirrorButton.addEventListener('click', () => this.toggleMirror());
-                panelButtons.insertBefore(mirrorButton, panelButtons.firstChild);
+                mountPanelControl(panelButtons, mirrorButton, 'secondary', 130);
             }
 
             if (!document.getElementById('video-blur-toggle-btn')) {
@@ -2242,7 +2370,7 @@
                 blurButton.type = 'button';
                 applyPanelButtonIcon(blurButton, 'blur');
                 blurButton.addEventListener('click', () => this.toggleBlur());
-                panelButtons.insertBefore(blurButton, panelButtons.firstChild);
+                mountPanelControl(panelButtons, blurButton, 'secondary', 120);
             }
         }
 
@@ -2460,13 +2588,12 @@
 
             const wrapper = document.createElement('div');
             wrapper.className = 'hdw-overlay-toggle-wrap';
-
             const settingsPopup = this.createSettingsPopup();
             wrapper.appendChild(settingsPopup);
             wrapper.appendChild(button);
             bindPopupClickToggle(wrapper, button, settingsPopup);
 
-            panelButtons.insertBefore(wrapper, panelButtons.firstChild);
+            mountPanelControl(panelButtons, wrapper, 'secondary', 110);
         }
 
         createSettingsPopup() {
@@ -2885,6 +3012,7 @@
             this.isTheaterMode = false;
             this.mutationObserver = null;
             this.observerRaf = null;
+            this.centerPopupRaf = null;
         }
 
         init() {
@@ -2962,6 +3090,7 @@
                 requestAnimationFrame(() => {
                     this.updateSelectedTranslatorName();
                     this.syncPanelControlState();
+                    this.scheduleCenterActiveItemInPopup();
                 });
             });
         }
@@ -2982,6 +3111,7 @@
                     this.updateSelectedTranslatorName();
                     this.rebuildPanelPopup();
                     this.syncPanelControlState();
+                    this.scheduleCenterActiveItemInPopup();
                 });
             });
 
@@ -3117,7 +3247,6 @@
 
             const wrapper = document.createElement('div');
             wrapper.className = 'hdw-translators-panel-wrap';
-
             const popup = this.createPanelPopup();
             wrapper.appendChild(popup);
             wrapper.appendChild(button);
@@ -3126,10 +3255,15 @@
             this.panelButtonEl = button;
             this.panelPopupEl = popup;
             this.panelPopupController = bindPopupClickToggle(wrapper, button, popup, {
-                shouldOpenOnTrigger: () => this.shouldShowPanelControl()
+                shouldOpenOnTrigger: () => this.shouldShowPanelControl(),
+                onToggle: (opened) => {
+                    if (opened) {
+                        this.scheduleCenterActiveItemInPopup();
+                    }
+                }
             });
 
-            panelButtons.insertBefore(wrapper, panelButtons.firstChild);
+            mountPanelControl(panelButtons, wrapper, 'primary', 20);
             this.rebuildPanelPopup();
             this.syncPanelControlState();
             this.updateSelectedTranslatorName();
@@ -3228,6 +3362,21 @@
             return button;
         }
 
+        scheduleCenterActiveItemInPopup() {
+            if (!this.panelPopupController?.isOpen() || !this.panelListEl) {
+                return;
+            }
+
+            if (this.centerPopupRaf) {
+                cancelAnimationFrame(this.centerPopupRaf);
+            }
+
+            this.centerPopupRaf = requestAnimationFrame(() => {
+                this.centerPopupRaf = null;
+                centerActivePanelListItem(this.panelListEl);
+            });
+        }
+
         syncPanelControlState() {
             if (!this.panelControlEl) {
                 return;
@@ -3240,11 +3389,6 @@
                 return;
             }
 
-            const panelButtons = this.panelControlEl.parentElement;
-            if (panelButtons && panelButtons.firstChild !== this.panelControlEl) {
-                panelButtons.insertBefore(this.panelControlEl, panelButtons.firstChild);
-            }
-
             if (!this.panelListEl || this.panelListEl.childElementCount !== this.getTranslatorCount()) {
                 this.rebuildPanelPopup();
             }
@@ -3253,6 +3397,7 @@
             this.panelListEl?.querySelectorAll('.hdw-translators-panel-item').forEach((button) => {
                 button.classList.toggle('hdw-active', button.dataset.translatorKey === activeKey);
             });
+            this.scheduleCenterActiveItemInPopup();
         }
 
         setTheaterMode(active) {
@@ -3278,6 +3423,7 @@
             this.isTheaterMode = false;
             this.mutationObserver = null;
             this.observerRaf = null;
+            this.centerPopupRaf = null;
         }
 
         init() {
@@ -3312,6 +3458,7 @@
                 requestAnimationFrame(() => {
                     this.updateSelectedSeasonName();
                     this.syncPanelControlState();
+                    this.scheduleCenterActiveItemInPopup();
                 });
             });
         }
@@ -3332,6 +3479,7 @@
                     this.updateSelectedSeasonName();
                     this.rebuildPanelPopup();
                     this.syncPanelControlState();
+                    this.scheduleCenterActiveItemInPopup();
                 });
             });
 
@@ -3426,7 +3574,6 @@
 
             const wrapper = document.createElement('div');
             wrapper.className = 'hdw-seasons-panel-wrap';
-
             const popup = this.createPanelPopup();
             wrapper.appendChild(popup);
             wrapper.appendChild(button);
@@ -3435,10 +3582,15 @@
             this.panelButtonEl = button;
             this.panelPopupEl = popup;
             this.panelPopupController = bindPopupClickToggle(wrapper, button, popup, {
-                shouldOpenOnTrigger: () => this.shouldShowPanelControl()
+                shouldOpenOnTrigger: () => this.shouldShowPanelControl(),
+                onToggle: (opened) => {
+                    if (opened) {
+                        this.scheduleCenterActiveItemInPopup();
+                    }
+                }
             });
 
-            panelButtons.insertBefore(wrapper, panelButtons.firstChild);
+            mountPanelControl(panelButtons, wrapper, 'primary', 30);
             this.rebuildPanelPopup();
             this.syncPanelControlState();
             this.updateSelectedSeasonName();
@@ -3532,6 +3684,21 @@
             return button;
         }
 
+        scheduleCenterActiveItemInPopup() {
+            if (!this.panelPopupController?.isOpen() || !this.panelListEl) {
+                return;
+            }
+
+            if (this.centerPopupRaf) {
+                cancelAnimationFrame(this.centerPopupRaf);
+            }
+
+            this.centerPopupRaf = requestAnimationFrame(() => {
+                this.centerPopupRaf = null;
+                centerActivePanelListItem(this.panelListEl);
+            });
+        }
+
         syncPanelControlState() {
             if (!this.panelControlEl) {
                 return;
@@ -3539,17 +3706,10 @@
 
             const shouldShow = this.shouldShowPanelControl();
             this.panelControlEl.hidden = !shouldShow;
+            syncPlayerControlsPanelGroupStarts(this.panelControlEl);
             if (!shouldShow) {
                 this.panelPopupController?.close();
                 return;
-            }
-
-            const panelButtons = this.panelControlEl.parentElement;
-            const translatorsControl = panelButtons?.querySelector('.hdw-translators-panel-wrap');
-            if (panelButtons && translatorsControl && translatorsControl.nextSibling !== this.panelControlEl) {
-                panelButtons.insertBefore(this.panelControlEl, translatorsControl.nextSibling);
-            } else if (panelButtons && !translatorsControl && panelButtons.firstChild !== this.panelControlEl) {
-                panelButtons.insertBefore(this.panelControlEl, panelButtons.firstChild);
             }
 
             if (!this.panelListEl || this.panelListEl.childElementCount !== this.getSeasonCount()) {
@@ -3560,6 +3720,7 @@
             this.panelListEl?.querySelectorAll('.hdw-translators-panel-item').forEach((button) => {
                 button.classList.toggle('hdw-active', button.dataset.seasonKey === activeKey);
             });
+            this.scheduleCenterActiveItemInPopup();
         }
 
         setTheaterMode(active) {
@@ -3739,7 +3900,6 @@
 
             const wrapper = document.createElement('div');
             wrapper.className = 'hdw-episodes-panel-wrap';
-
             const popup = this.createPanelPopup();
             wrapper.appendChild(popup);
             wrapper.appendChild(button);
@@ -3756,7 +3916,7 @@
                 }
             });
 
-            panelButtons.insertBefore(wrapper, panelButtons.firstChild);
+            mountPanelControl(panelButtons, wrapper, 'primary', 40);
             this.rebuildPanelPopup();
             this.syncPanelControlState();
             this.updateSelectedEpisodeName();
@@ -3868,18 +4028,7 @@
         }
 
         centerActiveEpisodeInPopup() {
-            if (!this.panelListEl) {
-                return;
-            }
-
-            const activeButton = this.panelListEl.querySelector('.hdw-translators-panel-item.hdw-active');
-            if (!activeButton) {
-                return;
-            }
-
-            const targetScrollTop = activeButton.offsetTop - (this.panelListEl.clientHeight / 2) + (activeButton.offsetHeight / 2);
-            const maxScrollTop = Math.max(0, this.panelListEl.scrollHeight - this.panelListEl.clientHeight);
-            this.panelListEl.scrollTop = Math.max(0, Math.min(targetScrollTop, maxScrollTop));
+            centerActivePanelListItem(this.panelListEl);
         }
 
         syncPanelControlState() {
@@ -3889,20 +4038,10 @@
 
             const shouldShow = this.shouldShowPanelControl();
             this.panelControlEl.hidden = !shouldShow;
+            syncPlayerControlsPanelGroupStarts(this.panelControlEl);
             if (!shouldShow) {
                 this.panelPopupController?.close();
                 return;
-            }
-
-            const panelButtons = this.panelControlEl.parentElement;
-            const seasonsControl = panelButtons?.querySelector('.hdw-seasons-panel-wrap');
-            const translatorsControl = panelButtons?.querySelector('.hdw-translators-panel-wrap');
-            if (panelButtons && seasonsControl && seasonsControl.nextSibling !== this.panelControlEl) {
-                panelButtons.insertBefore(this.panelControlEl, seasonsControl.nextSibling);
-            } else if (panelButtons && !seasonsControl && translatorsControl && translatorsControl.nextSibling !== this.panelControlEl) {
-                panelButtons.insertBefore(this.panelControlEl, translatorsControl.nextSibling);
-            } else if (panelButtons && !seasonsControl && !translatorsControl && panelButtons.firstChild !== this.panelControlEl) {
-                panelButtons.insertBefore(this.panelControlEl, panelButtons.firstChild);
             }
 
             if (!this.panelListEl || this.panelListEl.childElementCount !== this.getEpisodeCount()) {
@@ -4040,9 +4179,7 @@
             button.type = 'button';
             applyPanelButtonIcon(button, 'theater');
             button.addEventListener('click', () => this.toggleTheaterMode());
-            markPanelControlGroup(button, 'secondary', { isGroupStart: true });
-
-            panelButtons.appendChild(button);
+            mountPanelControl(panelButtons, button, 'tertiary', 210);
         }
 
         addAspectRatioToggleButton() {
@@ -4063,13 +4200,12 @@
 
             const wrapper = document.createElement('div');
             wrapper.className = 'hdw-aspect-ratio-wrap';
-
             const popup = this.createAspectRatioPopup();
             wrapper.appendChild(popup);
             wrapper.appendChild(button);
             bindPopupClickToggle(wrapper, button, popup);
 
-            panelButtons.appendChild(wrapper);
+            mountPanelControl(panelButtons, wrapper, 'secondary', 150);
         }
 
         normalizeAspectRatioMode(value) {
@@ -4946,8 +5082,7 @@
                 button,
                 () => this.getCurrentPageBookmarkData()
             );
-
-            panelButtons.insertBefore(bookmarkControl, panelButtons.firstChild);
+            mountPanelControl(panelButtons, bookmarkControl, 'primary', 10);
             this.refreshCurrentPageBookmarkControls();
         }
         
@@ -5320,5 +5455,11 @@
     global.__HDREZKA_CORE_VERSION__ = HDREZKA_CORE_VERSION;
     global.__HDREZKA_CORE__ = runHdrezkaCore;
 })(typeof globalThis !== 'undefined' ? globalThis : window);
+
+
+
+
+
+
 
 
