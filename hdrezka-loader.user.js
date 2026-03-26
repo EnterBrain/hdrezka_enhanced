@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HDRezka Enhanced
 // @namespace    http://tampermonkey.net/
-// @version      0.1.4
+// @version      0.1.5
 // @description  Улучшение пользовательского опыта на HDRezka: закладки, прогресс и UX-улучшения интерфейса
 // @author       EnterBrain42
 // @match        *://*/*
@@ -15,6 +15,7 @@
 // @grant        GM_xmlhttpRequest
 // @connect      raw.githubusercontent.com
 // @resource     hdrezka_core https://raw.githubusercontent.com/EnterBrain/hdrezka_enhanced/main/hdrezka-core.js
+// @resource     hdrezka_core_css https://raw.githubusercontent.com/EnterBrain/hdrezka_enhanced/main/assets/hdrezka-core.css
 // @run-at       document-idle
 // @license      MIT
 // ==/UserScript==
@@ -292,6 +293,7 @@
         try {
             const gmApi = {
                 GM_addStyle: typeof GM_addStyle === 'function' ? GM_addStyle : null,
+                GM_getResourceText: typeof GM_getResourceText === 'function' ? GM_getResourceText : null,
                 GM_getValue: typeof GM_getValue === 'function' ? GM_getValue : null,
                 GM_setValue: typeof GM_setValue === 'function' ? GM_setValue : null,
                 GM_listValues: typeof GM_listValues === 'function' ? GM_listValues : null,
@@ -306,7 +308,7 @@
             new Function(
                 'gmApi',
                 `
-                const { GM_addStyle, GM_getValue, GM_setValue, GM_listValues, GM_deleteValue, GM_xmlhttpRequest, HDREZKA_CORE_BASE_URL } = gmApi;
+                const { GM_addStyle, GM_getResourceText, GM_getValue, GM_setValue, GM_listValues, GM_deleteValue, GM_xmlhttpRequest, HDREZKA_CORE_BASE_URL } = gmApi;
                 ${coreCode}
                 //# sourceURL=hdrezka-core.js
                 `
