@@ -886,7 +886,10 @@
                     return null;
                 }
 
-                const nextItem = this.normalizeBookmarkInput(itemData, nextState);
+                const nextItem = this.normalizeBookmarkInput({
+                    ...itemData,
+                    listState: nextState
+                }, nextState);
                 if (!nextItem) {
                     return null;
                 }
@@ -4796,7 +4799,7 @@
             return {
                 ...movieInfo,
                 id: existingItem?.id || movieInfo.id || MovieParser.generateId(),
-                listState: existingItem?.listState || BookmarkManager.getListState(movieInfo.url) || LIST_STATES.favorite
+                listState: existingItem?.listState || BookmarkManager.getListState(movieInfo.url) || null
             };
         }
 

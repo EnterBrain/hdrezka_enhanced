@@ -489,24 +489,28 @@
         
         /* Secondary status button on the title page; primary entrypoint now lives in the player panel */
         #add-to-watchlist-btn {
-            width: 100%;
+            width: auto;
+            min-width: min(100%, 200px);
             position: relative;
             background: linear-gradient(180deg, rgba(29, 36, 46, 0.96) 0%, rgba(22, 28, 36, 0.96) 100%);
             color: #eef3f8;
             border: 1px solid rgba(120, 149, 179, 0.22);
-            border-radius: 10px;
-            padding: 12px 20px;
+            border-radius: 12px;
+            padding: 11px 16px 12px;
             font-size: 15px;
             font-weight: 600;
             cursor: pointer;
             margin: 15px 0;
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
             transition: background-color .2s linear, border-color .2s linear, color .2s linear, box-shadow .2s linear, transform .2s ease;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            line-height: normal;
+            display: inline-grid;
+            grid-auto-flow: row;
+            justify-items: start;
+            align-content: center;
+            gap: 3px;
+            line-height: 1.05;
+            text-align: left;
+            white-space: normal;
         }
         
         #add-to-watchlist-btn:hover {
@@ -531,21 +535,27 @@
         
         #add-to-watchlist-btn .hdw-page-bookmark-prefix {
             color: #9db2c6;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 500;
-            letter-spacing: 0.02em;
+            letter-spacing: 0.08em;
             text-transform: uppercase;
+            line-height: 1.1;
         }
 
         #add-to-watchlist-btn .hdw-page-bookmark-value {
             color: inherit;
-            font-size: 15px;
-            font-weight: 700;
+            font-size: 17px;
+            font-weight: 800;
+            line-height: 1.1;
+            word-break: keep-all;
         }
 
         .hdw-watchlist-status-wrap {
             position: relative;
             margin: 15px 0;
+            display: block;
+            width: 100%;
+            max-width: 100%;
         }
 
         .hdw-watchlist-status-wrap #add-to-watchlist-btn {
@@ -556,6 +566,8 @@
             margin: 0;
             display: inline-flex;
             align-items: center;
+            width: auto;
+            max-width: none;
         }
 
         .hdw-watchlist-status-popup {
@@ -868,6 +880,17 @@
             gap: 8px;
         }
 
+        .hdw-player-controls-panel .hdw-watchlist-status-wrap,
+        #theater-mode-toggle-btn,
+        #video-blur-toggle-btn,
+        #video-mirror-toggle-btn,
+        #audio-compressor-toggle-btn,
+        #player-watchlist-status-btn,
+        #player-aspect-ratio-toggle-btn,
+        .hdw-panel-popup-text-trigger {
+            flex: 0 0 auto;
+        }
+
         .hdw-player-controls-panel-buttons > .hdw-panel-group-start {
             position: relative;
             margin-left: 14px;
@@ -907,6 +930,12 @@
             font-size: 0;
             cursor: pointer;
             line-height: normal !important;
+        }
+
+        #theater-mode-toggle-btn,
+        #video-blur-toggle-btn,
+        #video-mirror-toggle-btn {
+            min-width: 46px;
         }
 
         .hdw-panel-button-icon {
