@@ -303,6 +303,27 @@
 
         return activeItems[0] || items[0] || null;
     }
+
+    function getSeasonItemId(item) {
+        return item?.getAttribute?.('data-tab_id') || '';
+    }
+
+    function getSeasonOptionKey(item) {
+        if (!item) {
+            return '';
+        }
+
+        return getSeasonItemId(item) || (item.textContent || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function findActiveSeasonItem(root = document) {
+        const items = Array.from(root.querySelectorAll('#simple-seasons-tabs .b-simple_season__item'));
+        if (!items.length) {
+            return null;
+        }
+
+        return items.find((item) => item.classList.contains('active')) || items[0] || null;
+    }
     
     // Функция для формирования URL с якорем позиции воспроизведения
     function buildItemUrlWithAnchor(item) {
@@ -3190,12 +3211,317 @@
         }
     }
 
+    class SeasonsPanelModule {
+        constructor() {
+            this.initialized = false;
+            this.tabsEl = null;
+            this.panelControlEl = null;
+            this.panelButtonEl = null;
+            this.panelPopupEl = null;
+            this.panelCurrentEl = null;
+            this.panelListEl = null;
+            this.panelPopupController = null;
+            this.isTheaterMode = false;
+            this.mutationObserver = null;
+            this.observerRaf = null;
+        }
+
+        init() {
+            if (this.initialized) {
+                return;
+            }
+
+            this.tabsEl = document.getElementById('simple-seasons-tabs');
+            if (!this.tabsEl) {
+                return;
+            }
+
+            this.initialized = true;
+            this.ensurePanelControl();
+            this.bindEvents();
+            this.bindObserver();
+            this.syncPanelControlState();
+            this.updateSelectedSeasonName();
+        }
+
+        bindEvents() {
+            if (!this.tabsEl) {
+                return;
+            }
+
+            this.tabsEl.addEventListener('click', (event) => {
+                const seasonItem = event.target.closest('.b-simple_season__item');
+                if (!seasonItem) {
+                    return;
+                }
+
+                requestAnimationFrame(() => {
+                    this.updateSelectedSeasonName();
+                    this.syncPanelControlState();
+                });
+            });
+        }
+
+        bindObserver() {
+            if (!this.tabsEl || this.mutationObserver) {
+                return;
+            }
+
+            this.mutationObserver = new MutationObserver(() => {
+                if (this.observerRaf) {
+                    return;
+                }
+
+                this.observerRaf = requestAnimationFrame(() => {
+                    this.observerRaf = null;
+                    this.ensureTabsReference();
+                    this.updateSelectedSeasonName();
+                    this.rebuildPanelPopup();
+                    this.syncPanelControlState();
+                });
+            });
+
+            this.mutationObserver.observe(this.tabsEl, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['class', 'data-tab_id']
+            });
+        }
+
+        ensureTabsReference() {
+            const nextTabsEl = document.getElementById('simple-seasons-tabs');
+            if (!nextTabsEl || nextTabsEl === this.tabsEl) {
+                return;
+            }
+
+            this.tabsEl = nextTabsEl;
+        }
+
+        getSeasonItems() {
+            if (!this.tabsEl) {
+                return [];
+            }
+
+            return Array.from(this.tabsEl.querySelectorAll('.b-simple_season__item'));
+        }
+
+        findSeasonItemById(seasonId) {
+            const normalizedId = String(seasonId || '').trim();
+            if (!normalizedId || !this.tabsEl) {
+                return null;
+            }
+
+            return this.tabsEl.querySelector(`.b-simple_season__item[data-tab_id="${CSS.escape(normalizedId)}"]`);
+        }
+
+        findSeasonItemByKey(optionKey) {
+            const normalizedKey = String(optionKey || '').trim();
+            if (!normalizedKey) {
+                return null;
+            }
+
+            return this.getSeasonItems().find((item) => getSeasonOptionKey(item) === normalizedKey) || null;
+        }
+
+        getSeasonCount() {
+            return this.getSeasonItems().length;
+        }
+
+        shouldShowPanelControl() {
+            return this.isTheaterMode && this.getSeasonCount() > 1;
+        }
+
+        getActiveSeasonName() {
+            const activeSeason = findActiveSeasonItem(this.tabsEl || document);
+            const seasonName = activeSeason?.textContent?.replace(/\s+/g, ' ').trim();
+            return seasonName || 'Не выбран';
+        }
+
+        updateSelectedSeasonName() {
+            const activeName = this.getActiveSeasonName();
+
+            if (this.panelButtonEl) {
+                const label = this.panelButtonEl.querySelector('.hdw-seasons-button-label');
+                if (label) {
+                    label.textContent = activeName;
+                }
+                this.panelButtonEl.title = `Выбрать сезон. Сейчас: ${activeName}`;
+            }
+
+            if (this.panelCurrentEl) {
+                this.panelCurrentEl.textContent = `Сейчас: ${activeName}`;
+            }
+        }
+
+        ensurePanelControl() {
+            if (this.panelControlEl) {
+                return;
+            }
+
+            const panelButtons = ensurePlayerControlsPanel();
+            if (!panelButtons) {
+                return;
+            }
+
+            const button = document.createElement('button');
+            button.id = 'player-seasons-toggle-btn';
+            button.type = 'button';
+            button.className = 'hdw-panel-popup-text-trigger';
+            button.innerHTML = '<span class="hdw-seasons-button-label"></span>';
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'hdw-seasons-panel-wrap';
+
+            const popup = this.createPanelPopup();
+            wrapper.appendChild(popup);
+            wrapper.appendChild(button);
+
+            this.panelControlEl = wrapper;
+            this.panelButtonEl = button;
+            this.panelPopupEl = popup;
+            this.panelPopupController = bindPopupClickToggle(wrapper, button, popup, {
+                shouldOpenOnTrigger: () => this.shouldShowPanelControl()
+            });
+
+            panelButtons.insertBefore(wrapper, panelButtons.firstChild);
+            this.rebuildPanelPopup();
+            this.syncPanelControlState();
+            this.updateSelectedSeasonName();
+        }
+
+        createPanelPopup() {
+            const popup = document.createElement('div');
+            popup.id = 'hdw-seasons-panel-popup';
+
+            const header = document.createElement('div');
+            header.className = 'hdw-translators-panel-header';
+
+            const title = document.createElement('div');
+            title.className = 'hdw-translators-panel-title';
+            title.textContent = 'Выбор сезона';
+
+            const current = document.createElement('div');
+            current.className = 'hdw-translators-panel-current';
+
+            header.appendChild(title);
+            header.appendChild(current);
+            popup.appendChild(header);
+
+            const list = document.createElement('div');
+            list.className = 'hdw-translators-panel-list';
+            popup.appendChild(list);
+
+            this.panelCurrentEl = current;
+            this.panelListEl = list;
+            return popup;
+        }
+
+        rebuildPanelPopup() {
+            if (!this.panelListEl) {
+                return;
+            }
+
+            this.panelListEl.textContent = '';
+            this.getSeasonItems().forEach((seasonItem) => {
+                this.panelListEl.appendChild(this.createPanelSeasonButton(seasonItem));
+            });
+        }
+
+        createPanelSeasonButton(sourceItem) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'hdw-translators-panel-item';
+            const seasonId = getSeasonItemId(sourceItem);
+            const seasonKey = getSeasonOptionKey(sourceItem);
+            let lastActivationAt = 0;
+            button.dataset.seasonId = seasonId;
+            button.dataset.seasonKey = seasonKey;
+            button.textContent = sourceItem.textContent.replace(/\s+/g, ' ').trim() || 'Без названия';
+            button.classList.toggle('hdw-active', seasonKey === getSeasonOptionKey(findActiveSeasonItem(this.tabsEl || document)));
+            button.title = button.textContent;
+
+            const activateSeason = (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+
+                const now = Date.now();
+                if (now - lastActivationAt < 350) {
+                    return;
+                }
+                lastActivationAt = now;
+
+                const activeSeasonKey = getSeasonOptionKey(findActiveSeasonItem(this.tabsEl || document));
+                if (seasonKey && seasonKey === activeSeasonKey) {
+                    this.panelPopupController?.close();
+                    return;
+                }
+
+                const currentSourceItem = this.findSeasonItemByKey(seasonKey)
+                    || this.findSeasonItemById(seasonId)
+                    || sourceItem;
+
+                this.panelPopupController?.close();
+                currentSourceItem.dispatchEvent(new MouseEvent('click', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window
+                }));
+            };
+
+            button.addEventListener('pointerdown', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+            });
+            button.addEventListener('pointerup', activateSeason);
+            button.addEventListener('click', activateSeason);
+            return button;
+        }
+
+        syncPanelControlState() {
+            if (!this.panelControlEl) {
+                return;
+            }
+
+            const shouldShow = this.shouldShowPanelControl();
+            this.panelControlEl.hidden = !shouldShow;
+            if (!shouldShow) {
+                this.panelPopupController?.close();
+                return;
+            }
+
+            const panelButtons = this.panelControlEl.parentElement;
+            const translatorsControl = panelButtons?.querySelector('.hdw-translators-panel-wrap');
+            if (panelButtons && translatorsControl && translatorsControl.nextSibling !== this.panelControlEl) {
+                panelButtons.insertBefore(this.panelControlEl, translatorsControl.nextSibling);
+            } else if (panelButtons && !translatorsControl && panelButtons.firstChild !== this.panelControlEl) {
+                panelButtons.insertBefore(this.panelControlEl, panelButtons.firstChild);
+            }
+
+            if (!this.panelListEl || this.panelListEl.childElementCount !== this.getSeasonCount()) {
+                this.rebuildPanelPopup();
+            }
+
+            const activeKey = getSeasonOptionKey(findActiveSeasonItem(this.tabsEl || document));
+            this.panelListEl?.querySelectorAll('.hdw-translators-panel-item').forEach((button) => {
+                button.classList.toggle('hdw-active', button.dataset.seasonKey === activeKey);
+            });
+        }
+
+        setTheaterMode(active) {
+            this.isTheaterMode = !!active;
+            this.syncPanelControlState();
+            this.updateSelectedSeasonName();
+        }
+    }
+
     class TheaterModeModule {
-        constructor(audioCompressor, videoEffects, playbackInfoOverlay, translatorsPanel) {
+        constructor(audioCompressor, videoEffects, playbackInfoOverlay, translatorsPanel, seasonsPanel) {
             this.audioCompressor = audioCompressor;
             this.videoEffects = videoEffects;
             this.playbackInfoOverlay = playbackInfoOverlay;
             this.translatorsPanel = translatorsPanel;
+            this.seasonsPanel = seasonsPanel;
             this.isActive = false;
             const storedAspectRatioMode = GM_getValue(config.aspectRatioStorageKey, '16:9');
             this.aspectRatioMode = this.normalizeAspectRatioMode(storedAspectRatioMode);
@@ -3228,6 +3554,7 @@
                 debugLog('[PlaybackInfoOverlay] Ошибка инициализации:', error);
             }
             this.translatorsPanel?.init();
+            this.seasonsPanel?.init();
             this.bindHotkeys();
             this.updateButtonState();
             this.updateAspectRatioButtonState();
@@ -3561,6 +3888,7 @@
             document.body.classList.add('hdw-theater-mode');
             this.isActive = true;
             this.translatorsPanel?.setTheaterMode(true);
+            this.seasonsPanel?.setTheaterMode(true);
             this.bindTheaterLayoutListeners();
             this.updateTheaterLayoutVars();
             this.scheduleTheaterLayout();
@@ -3577,6 +3905,7 @@
             });
             this.isActive = false;
             this.translatorsPanel?.setTheaterMode(false);
+            this.seasonsPanel?.setTheaterMode(false);
             this.unbindTheaterLayoutListeners();
             document.body.style.removeProperty('--hdw-top-offset');
             document.body.style.removeProperty('--hdw-bottom-offset');
@@ -3644,12 +3973,14 @@
     }
 
     const translatorsPanel = new TranslatorsPanelModule();
+    const seasonsPanel = new SeasonsPanelModule();
 
     const playerEnhancements = new TheaterModeModule(
         new AudioCompressorModule(config.compressorStorageKey, config.compressorSettingsStorageKey),
         new VideoEffectsModule(),
         new PlaybackInfoOverlayModule(config.overlayStorageKey, config.overlayDisplayStorageKey),
-        translatorsPanel
+        translatorsPanel,
+        seasonsPanel
     );
 
     // Интерфейс
