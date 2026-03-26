@@ -2859,20 +2859,41 @@
         `,
         compressor: `
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M5 14v-4M9 17V7M13 15V9M17 18V6M21 13v-2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+                <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity=".94">
+                    <path d="M10.5 5.2v2.1M13.5 5.2v2.1" opacity=".78"/>
+                    <path d="M7.5 8.2v2.4M10.5 8.2v2.4M13.5 8.2v2.4M16.5 8.2v2.4" opacity=".84"/>
+                    <path d="M4.5 11.2v2.6M7.5 11.2v2.6M10.5 11.2v2.6M13.5 11.2v2.6M16.5 11.2v2.6M19.5 11.2v2.6"/>
+                    <path d="M7.5 14.4v2.4M10.5 14.4v2.4M13.5 14.4v2.4M16.5 14.4v2.4" opacity=".84"/>
+                    <path d="M10.5 17.5v2.1M13.5 17.5v2.1" opacity=".78"/>
+                </g>
             </svg>
         `,
         blur: `
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <circle cx="7" cy="7" r="1.3" fill="currentColor"/>
-                <circle cx="12" cy="7" r="1.1" fill="currentColor" opacity=".85"/>
-                <circle cx="17" cy="7" r="1.3" fill="currentColor"/>
-                <circle cx="7" cy="12" r="1.1" fill="currentColor" opacity=".8"/>
-                <circle cx="12" cy="12" r="1.6" fill="currentColor"/>
-                <circle cx="17" cy="12" r="1.1" fill="currentColor" opacity=".8"/>
-                <circle cx="7" cy="17" r="1.3" fill="currentColor"/>
-                <circle cx="12" cy="17" r="1.1" fill="currentColor" opacity=".85"/>
-                <circle cx="17" cy="17" r="1.3" fill="currentColor"/>
+                <circle cx="10.5" cy="4.5" r="0.85" fill="currentColor" opacity=".78"/>
+                <circle cx="13.5" cy="4.5" r="0.85" fill="currentColor" opacity=".78"/>
+                <circle cx="7.5" cy="7.5" r="1.15" fill="currentColor" opacity=".84"/>
+                <circle cx="10.5" cy="7.5" r="1.15" fill="currentColor" opacity=".9"/>
+                <circle cx="13.5" cy="7.5" r="1.15" fill="currentColor" opacity=".9"/>
+                <circle cx="16.5" cy="7.5" r="1.15" fill="currentColor" opacity=".84"/>
+                <circle cx="4.5" cy="10.5" r="0.85" fill="currentColor" opacity=".78"/>
+                <circle cx="7.5" cy="10.5" r="1.15" fill="currentColor" opacity=".9"/>
+                <circle cx="10.5" cy="10.5" r="1.45" fill="currentColor"/>
+                <circle cx="13.5" cy="10.5" r="1.45" fill="currentColor"/>
+                <circle cx="16.5" cy="10.5" r="1.15" fill="currentColor" opacity=".9"/>
+                <circle cx="19.5" cy="10.5" r="0.85" fill="currentColor" opacity=".78"/>
+                <circle cx="4.5" cy="13.5" r="0.85" fill="currentColor" opacity=".78"/>
+                <circle cx="7.5" cy="13.5" r="1.15" fill="currentColor" opacity=".9"/>
+                <circle cx="10.5" cy="13.5" r="1.45" fill="currentColor"/>
+                <circle cx="13.5" cy="13.5" r="1.45" fill="currentColor"/>
+                <circle cx="16.5" cy="13.5" r="1.15" fill="currentColor" opacity=".9"/>
+                <circle cx="19.5" cy="13.5" r="0.85" fill="currentColor" opacity=".78"/>
+                <circle cx="7.5" cy="16.5" r="1.15" fill="currentColor" opacity=".84"/>
+                <circle cx="10.5" cy="16.5" r="1.15" fill="currentColor" opacity=".9"/>
+                <circle cx="13.5" cy="16.5" r="1.15" fill="currentColor" opacity=".9"/>
+                <circle cx="16.5" cy="16.5" r="1.15" fill="currentColor" opacity=".84"/>
+                <circle cx="10.5" cy="19.5" r="0.85" fill="currentColor" opacity=".78"/>
+                <circle cx="13.5" cy="19.5" r="0.85" fill="currentColor" opacity=".78"/>
             </svg>
         `,
         mirror: `

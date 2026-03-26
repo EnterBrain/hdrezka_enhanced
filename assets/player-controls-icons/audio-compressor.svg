@@ -1,3 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
-  <path d="M5 14v-4M9 17V7M13 15V9M17 18V6M21 13v-2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+  <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity=".94">
+    <path d="M10.5 5.2v2.1M13.5 5.2v2.1" opacity=".78"/>
+    <path d="M7.5 8.2v2.4M10.5 8.2v2.4M13.5 8.2v2.4M16.5 8.2v2.4" opacity=".84"/>
+    <path d="M4.5 11.2v2.6M7.5 11.2v2.6M10.5 11.2v2.6M13.5 11.2v2.6M16.5 11.2v2.6M19.5 11.2v2.6"/>
+    <path d="M7.5 14.4v2.4M10.5 14.4v2.4M13.5 14.4v2.4M16.5 14.4v2.4" opacity=".84"/>
+    <path d="M10.5 17.5v2.1M13.5 17.5v2.1" opacity=".78"/>
+  </g>
 </svg>
