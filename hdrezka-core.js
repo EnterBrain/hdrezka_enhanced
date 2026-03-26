@@ -1,6 +1,6 @@
 (function (global) {
     'use strict';
-    const HDREZKA_CORE_VERSION = '2026.03.08.160200.888-7b39440'; // auto-updated by git hook
+    const HDREZKA_CORE_VERSION = '2026.03.26.160833.093-3e33e4c'; // auto-updated by git hook
 
     function runHdrezkaCore() {
     'use strict';
@@ -33,6 +33,7 @@
         // Ключ для хранения данных
         storageKey: 'hdrezka_watchlist_items',
         compressorStorageKey: 'hdw_audio_compressor_enabled',
+        compressorSettingsStorageKey: 'hdw_audio_compressor_settings_v1',
         overlayStorageKey: 'hdw_playback_overlay_enabled',
         overlayDisplayStorageKey: 'hdw_playback_overlay_display_v1',
         aspectRatioStorageKey: 'hdw_player_aspect_ratio_mode',
@@ -225,7 +226,8 @@
             font-size: 14px;
             color: #666;
             display: flex;
-            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
             align-items: center;
             border: 1px solid #e9ecef;
         }
@@ -463,10 +465,120 @@
             border-color: #64b5f6;
             box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.3);
         }
+
+        .watchlist-status-filter {
+            min-width: 190px;
+            margin-bottom: 0;
+            padding: 10px 12px;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            background: #fff;
+            color: #2c3e50;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        body.b-theme__template__night #watchlist-content .watchlist-status-filter {
+            background-color: #444;
+            color: #e0e0e0;
+            border: 1px solid #666;
+        }
+
+        .watchlist-status-filter:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        body.b-theme__template__night #watchlist-content .watchlist-status-filter:focus {
+            border-color: #64b5f6;
+            box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.3);
+        }
         
         .watchlist-item-actions {
             display: flex;
+            flex-wrap: wrap;
             gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .watchlist-status-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .watchlist-status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 9px;
+            border-radius: 999px;
+            background: rgba(52, 152, 219, 0.1);
+            color: #2c3e50;
+            font-size: 12px;
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+        body.b-theme__template__night #watchlist-content .watchlist-status-badge {
+            background: rgba(100, 181, 246, 0.12);
+            color: #d9ecff;
+        }
+
+        .watchlist-status-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: flex-end;
+        }
+
+        .watchlist-status-btn {
+            border: 1px solid rgba(52, 152, 219, 0.22);
+            border-radius: 999px;
+            background: rgba(52, 152, 219, 0.08);
+            color: #31526b;
+            padding: 5px 8px;
+            font-size: 12px;
+            line-height: 1;
+            cursor: pointer;
+            transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+            white-space: nowrap;
+        }
+
+        .watchlist-status-btn:hover {
+            background: rgba(52, 152, 219, 0.16);
+            border-color: rgba(52, 152, 219, 0.34);
+            color: #1f3f57;
+        }
+
+        .watchlist-status-btn:active {
+            transform: translateY(1px);
+        }
+
+        .watchlist-status-btn.hdw-active {
+            background: #1f618d;
+            border-color: #1f618d;
+            color: #fff;
+        }
+
+        body.b-theme__template__night #watchlist-content .watchlist-status-btn {
+            border-color: rgba(100, 181, 246, 0.2);
+            background: rgba(100, 181, 246, 0.08);
+            color: #d7e7f7;
+        }
+
+        body.b-theme__template__night #watchlist-content .watchlist-status-btn:hover {
+            background: rgba(100, 181, 246, 0.16);
+            border-color: rgba(100, 181, 246, 0.36);
+            color: #fff;
+        }
+
+        body.b-theme__template__night #watchlist-content .watchlist-status-btn.hdw-active {
+            background: #1e88e5;
+            border-color: #1e88e5;
+            color: #fff;
         }
         
         .no-bookmarks {
@@ -486,39 +598,285 @@
             display: block;
         }
         
-        /* Стили для кнопки "Добавить в закладки" на странице фильма */
+        /* Secondary status button on the title page; primary entrypoint now lives in the player panel */
         #add-to-watchlist-btn {
             width: 100%;
-            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
-            color: white;
-            border: none;
-            border-radius: 6px;
+            position: relative;
+            background: linear-gradient(180deg, rgba(29, 36, 46, 0.96) 0%, rgba(22, 28, 36, 0.96) 100%);
+            color: #eef3f8;
+            border: 1px solid rgba(120, 149, 179, 0.22);
+            border-radius: 10px;
             padding: 12px 20px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
             margin: 15px 0;
-            box-shadow: 0 2px 8px rgba(46, 204, 113, 0.3);
-            transition: all 0.3s ease;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+            transition: background-color .2s linear, border-color .2s linear, color .2s linear, box-shadow .2s linear, transform .2s ease;
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
         }
         
         #add-to-watchlist-btn:hover {
-            background: linear-gradient(135deg, #27ae60 0%, #219653 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(46, 204, 113, 0.4);
+            background: linear-gradient(180deg, rgba(35, 44, 56, 0.98) 0%, rgba(27, 34, 44, 0.98) 100%);
+            border-color: rgba(141, 188, 227, 0.34);
+            color: #fff;
+            transform: translateY(-1px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.24);
         }
         
-        #add-to-watchlist-btn.btn-danger {
-            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-            box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+        #add-to-watchlist-btn.hdw-active {
+            border-color: rgba(95, 169, 224, 0.52);
+            background: linear-gradient(180deg, rgba(23, 43, 62, 0.98) 0%, rgba(18, 36, 53, 0.98) 100%);
+            color: #fff;
+            box-shadow: 0 10px 22px rgba(17, 52, 81, 0.28);
+        }
+
+        .hdw-watchlist-status-wrap.hdw-popup-open #add-to-watchlist-btn {
+            border-color: rgba(141, 188, 227, 0.4);
+            box-shadow: 0 0 0 3px rgba(31, 97, 141, 0.12), 0 12px 24px rgba(0, 0, 0, 0.24);
         }
         
-        #add-to-watchlist-btn.btn-danger:hover {
-            background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
-            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
+        #add-to-watchlist-btn .hdw-page-bookmark-prefix {
+            color: #9db2c6;
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+
+        #add-to-watchlist-btn .hdw-page-bookmark-value {
+            color: inherit;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .hdw-watchlist-status-wrap {
+            position: relative;
+            margin: 15px 0;
+        }
+
+        .hdw-watchlist-status-wrap #add-to-watchlist-btn {
+            margin: 0;
+        }
+
+        .hdw-player-controls-panel .hdw-watchlist-status-wrap {
+            margin: 0;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .hdw-watchlist-status-popup {
+            position: absolute;
+            left: 0;
+            top: calc(100% + 10px);
+            width: min(320px, 100%);
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: rgba(18, 20, 24, 0.98);
+            color: #eef3f8;
+            box-shadow: 0 16px 34px rgba(0, 0, 0, 0.38);
+            backdrop-filter: blur(14px);
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transform: translateY(-4px);
+            transition: opacity .16s linear, visibility .16s linear, transform .16s ease;
+            z-index: 120;
+        }
+
+        .hdw-watchlist-status-header {
+            display: grid;
+            gap: 3px;
+            margin-bottom: 10px;
+        }
+
+        .hdw-watchlist-status-title {
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .hdw-watchlist-status-current {
+            color: #9db2c6;
+            font-size: 11px;
+            line-height: 1.35;
+        }
+
+        .hdw-player-controls-panel .hdw-watchlist-status-popup {
+            left: 50%;
+            top: auto;
+            bottom: calc(100% + 8px);
+            width: 240px;
+            transform: translateX(-50%) translateY(4px);
+        }
+
+        .hdw-watchlist-status-wrap.hdw-popup-open .hdw-watchlist-status-popup {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+
+        .hdw-player-controls-panel .hdw-watchlist-status-wrap.hdw-popup-open .hdw-watchlist-status-popup {
+            transform: translateX(-50%) translateY(-2px);
+        }
+
+        .hdw-watchlist-status-list {
+            display: grid;
+            gap: 7px;
+        }
+
+        .hdw-watchlist-status-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 9px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #eef3f8;
+            padding: 10px 12px;
+            text-align: left;
+            cursor: pointer;
+            transition: background-color .16s linear, border-color .16s linear, color .16s linear, transform .16s ease;
+        }
+
+        .hdw-watchlist-status-item:hover,
+        .hdw-watchlist-status-item:focus-visible {
+            background: rgba(31, 97, 141, 0.18);
+            border-color: rgba(95, 169, 224, 0.42);
+            color: #fff;
+            outline: none;
+        }
+
+        .hdw-watchlist-status-item:active {
+            transform: translateY(1px);
+        }
+
+        .hdw-watchlist-status-item.hdw-selected {
+            background: rgba(31, 97, 141, 0.32);
+            border-color: rgba(95, 169, 224, 0.65);
+            color: #fff;
+        }
+
+        .hdw-watchlist-status-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            flex: 0 0 22px;
+            font-size: 15px;
+        }
+
+        .hdw-watchlist-status-text {
+            min-width: 0;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .hdw-watchlist-status-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .hdw-watchlist-status-remove {
+            width: 100%;
+            border: 1px solid rgba(226, 110, 110, 0.28);
+            border-radius: 8px;
+            background: rgba(168, 46, 46, 0.12);
+            color: #f0b2b2;
+            padding: 7px 10px;
+            font-size: 12px;
+            line-height: 1;
+            cursor: pointer;
+            transition: background-color .16s linear, border-color .16s linear, color .16s linear;
+        }
+
+        .hdw-watchlist-status-remove:hover,
+        .hdw-watchlist-status-remove:focus-visible {
+            background: rgba(168, 46, 46, 0.2);
+            border-color: rgba(236, 136, 136, 0.42);
+            color: #ffd1d1;
+            outline: none;
+        }
+
+        #player-watchlist-status-btn {
+            position: relative;
+            background: var(--hdw-panel-button-bg);
+            color: var(--hdw-panel-button-text);
+            border: 0;
+            border-radius: var(--hdw-panel-button-radius);
+            transition: background-color .2s linear, color .2s linear, box-shadow .2s linear, filter .2s linear;
+            height: 38px;
+            margin: 0;
+            outline: 0;
+            width: 54px;
+            padding: 0 14px 0 0;
+            box-sizing: border-box;
+            font-size: 0;
+            cursor: pointer;
+            line-height: normal !important;
+        }
+
+        #player-watchlist-status-btn::before {
+            content: '';
+            display: block;
+            width: 18px;
+            height: 16px;
+            margin: 11px auto 0;
+            background:
+                radial-gradient(circle at 30% 32%, transparent 5px, currentColor 5.5px 6.5px, transparent 7px),
+                radial-gradient(circle at 70% 32%, transparent 5px, currentColor 5.5px 6.5px, transparent 7px),
+                linear-gradient(135deg, transparent 42%, currentColor 43% 57%, transparent 58%) center 58% / 13px 13px no-repeat;
+            filter: drop-shadow(0 0 0 currentColor);
+            transform: translateX(-4px);
+        }
+
+        #player-watchlist-status-btn::after {
+            content: '';
+            position: absolute;
+            right: 9px;
+            top: 50%;
+            width: 6px;
+            height: 6px;
+            margin-top: -4px;
+            border-right: 1.5px solid currentColor;
+            border-bottom: 1.5px solid currentColor;
+            transform: rotate(45deg);
+            opacity: 0.75;
+            transition: transform .16s ease, opacity .16s linear;
+        }
+
+        #player-watchlist-status-btn:hover {
+            background: var(--hdw-panel-button-hover-bg);
+            color: #fff;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+            filter: saturate(1.2);
+        }
+
+        .hdw-watchlist-status-wrap.hdw-popup-open #player-watchlist-status-btn,
+        #player-watchlist-status-btn.hdw-popup-trigger-open {
+            box-shadow: inset 0 0 0 1px rgba(130, 193, 245, 0.34), 0 0 0 3px rgba(31, 97, 141, 0.18);
+        }
+
+        .hdw-watchlist-status-wrap.hdw-popup-open #player-watchlist-status-btn::after,
+        #player-watchlist-status-btn.hdw-popup-trigger-open::after {
+            transform: rotate(225deg);
+            opacity: 1;
+        }
+
+        #player-watchlist-status-btn.hdw-active {
+            background: var(--hdw-panel-button-active-bg);
+            color: var(--hdw-panel-button-active-text);
         }
         
         /* Стили для кнопки "Мой список" в шапке */
@@ -545,6 +903,27 @@
         }
 
         .hdw-player-controls-panel-wrapper {
+            --hdw-panel-bg: #1f1f1f;
+            --hdw-panel-button-bg: #2d2d2d;
+            --hdw-panel-button-hover-bg: #3d434b;
+            --hdw-panel-button-text: #aeb7c2;
+            --hdw-panel-button-active-bg: #1f618d;
+            --hdw-panel-button-active-text: #ffffff;
+            --hdw-panel-popup-bg: rgba(12, 14, 18, 0.97);
+            --hdw-panel-popup-border: rgba(255, 255, 255, 0.1);
+            --hdw-panel-popup-shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
+            --hdw-panel-popup-radius: 10px;
+            --hdw-panel-popup-text: #e8edf3;
+            --hdw-panel-popup-muted: #93a0ad;
+            --hdw-panel-popup-accent: #79b7f0;
+            --hdw-panel-item-bg: rgba(255, 255, 255, 0.05);
+            --hdw-panel-item-border: rgba(255, 255, 255, 0.09);
+            --hdw-panel-item-hover-bg: rgba(31, 97, 141, 0.18);
+            --hdw-panel-item-hover-border: rgba(95, 169, 224, 0.42);
+            --hdw-panel-item-active-bg: rgba(31, 97, 141, 0.32);
+            --hdw-panel-item-active-border: rgba(95, 169, 224, 0.65);
+            --hdw-panel-button-radius: 6px;
+            --hdw-panel-item-radius: 8px;
             margin-bottom: 20px;
             position: relative;
             width: 960px;
@@ -552,19 +931,16 @@
             margin-right: auto;
         }
 
-        body.b-theme__template__night .hdw-player-controls-panel {
-            background: #1f1f1f;
-        }
-
         .hdw-player-controls-panel {
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #e1e289;
+            background: var(--hdw-panel-bg);
             overflow: visible;
             min-height: 50px;
             padding: 0 10px;
             box-sizing: border-box;
+            border-radius: 10px;
         }
 
         .hdw-player-controls-panel-buttons {
@@ -574,63 +950,128 @@
             gap: 8px;
         }
 
-        #theater-mode-toggle-btn {
-            background: #2d2d2d;
-            color: #a5a5a5;
+        .hdw-player-controls-panel-buttons > .hdw-panel-group-start {
+            position: relative;
+            margin-left: 14px;
+        }
+
+        .hdw-player-controls-panel-buttons > .hdw-panel-group-start::before {
+            content: '';
+            position: absolute;
+            left: -11px;
+            top: 50%;
+            width: 1px;
+            height: 24px;
+            margin-top: -12px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(146, 164, 182, 0.42), rgba(255, 255, 255, 0));
+            pointer-events: none;
+        }
+
+        #theater-mode-toggle-btn,
+        #audio-compressor-toggle-btn,
+        #video-blur-toggle-btn,
+        #video-mirror-toggle-btn,
+        #playback-info-overlay-toggle-btn {
+            background: var(--hdw-panel-button-bg);
+            color: var(--hdw-panel-button-text);
             border: 0;
-            border-radius: 4px;
+            border-radius: var(--hdw-panel-button-radius);
             transition: background-color .2s linear, color .2s linear, box-shadow .2s linear, filter .2s linear;
             height: 38px;
             margin: 0;
             outline: 0;
             width: 46px;
+            padding: 0;
+            box-sizing: border-box;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             font-size: 0;
             cursor: pointer;
             line-height: normal !important;
         }
 
-        #theater-mode-toggle-btn::before {
-            content: '⛶';
+        #theater-mode-toggle-btn::after {
+            content: '';
             display: block;
-            font-size: 20px;
-            line-height: 38px;
-            text-align: center;
+            width: 16px;
+            height: 16px;
+            background:
+                linear-gradient(currentColor, currentColor) left top / 6px 2px no-repeat,
+                linear-gradient(currentColor, currentColor) left top / 2px 6px no-repeat,
+                linear-gradient(currentColor, currentColor) right top / 6px 2px no-repeat,
+                linear-gradient(currentColor, currentColor) right top / 2px 6px no-repeat,
+                linear-gradient(currentColor, currentColor) left bottom / 6px 2px no-repeat,
+                linear-gradient(currentColor, currentColor) left bottom / 2px 6px no-repeat,
+                linear-gradient(currentColor, currentColor) right bottom / 6px 2px no-repeat,
+                linear-gradient(currentColor, currentColor) right bottom / 2px 6px no-repeat;
         }
 
-        #theater-mode-toggle-btn:hover {
-            background: #414141;
+        #theater-mode-toggle-btn:hover,
+        #audio-compressor-toggle-btn:hover,
+        #video-blur-toggle-btn:hover,
+        #video-mirror-toggle-btn:hover,
+        #playback-info-overlay-toggle-btn:hover {
+            background: var(--hdw-panel-button-hover-bg);
             color: #fff;
             box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
             filter: saturate(1.2);
         }
 
-        #theater-mode-toggle-btn.hdw-active {
-            background: #1f618d;
-            color: #fff;
+        #theater-mode-toggle-btn.hdw-active,
+        #audio-compressor-toggle-btn.hdw-active,
+        #video-blur-toggle-btn.hdw-active,
+        #video-mirror-toggle-btn.hdw-active,
+        #playback-info-overlay-toggle-btn.hdw-active {
+            background: var(--hdw-panel-button-active-bg);
+            color: var(--hdw-panel-button-active-text);
         }
 
         #player-aspect-ratio-toggle-btn {
-            background: #2d2d2d;
-            color: #a5a5a5;
+            background: rgba(255, 255, 255, 0.06);
+            color: #d7e7f6;
             border: 0;
-            border-radius: 4px;
+            border-radius: var(--hdw-panel-button-radius);
             transition: background-color .2s linear, color .2s linear, box-shadow .2s linear, filter .2s linear;
             height: 38px;
             margin: 0;
             outline: 0;
-            min-width: 64px;
-            padding: 0 10px;
+            min-width: 72px;
+            padding: 0 22px 0 10px;
             font-size: 12px;
             font-weight: 700;
             cursor: pointer;
             line-height: 38px;
+            position: relative;
+            box-shadow: inset 0 0 0 1px rgba(95, 169, 224, 0.28);
         }
 
         #player-aspect-ratio-toggle-btn:hover {
-            background: #414141;
+            background: rgba(31, 97, 141, 0.18);
             color: #fff;
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+            box-shadow: inset 0 0 0 1px rgba(95, 169, 224, 0.48);
             filter: saturate(1.2);
+        }
+
+        #player-aspect-ratio-toggle-btn::after {
+            content: '';
+            position: absolute;
+            right: 9px;
+            top: 50%;
+            width: 6px;
+            height: 6px;
+            margin-top: -4px;
+            border-right: 1.5px solid currentColor;
+            border-bottom: 1.5px solid currentColor;
+            transform: rotate(45deg);
+            opacity: 0.72;
+            transition: transform .16s ease, opacity .16s linear;
+        }
+
+        .hdw-aspect-ratio-wrap.hdw-popup-open #player-aspect-ratio-toggle-btn::after,
+        #player-aspect-ratio-toggle-btn.hdw-popup-trigger-open::after {
+            transform: rotate(225deg);
+            opacity: 1;
         }
 
         .hdw-aspect-ratio-wrap {
@@ -639,38 +1080,43 @@
             align-items: center;
         }
 
+        .hdw-aspect-ratio-wrap.hdw-popup-open {
+            z-index: 140;
+        }
+
         #hdw-aspect-ratio-popup {
             position: absolute;
             left: 50%;
-            bottom: calc(100% - 1px);
+            bottom: calc(100% + 8px);
             margin-bottom: 0;
             transform: translateX(-50%);
-            min-width: 150px;
-            padding: 10px;
-            border-radius: 6px;
-            background: rgba(12, 12, 12, 0.95);
-            color: #e8e8e8;
-            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4);
+            min-width: 170px;
+            padding: 10px 12px;
+            border: 1px solid var(--hdw-panel-popup-border);
+            border-radius: var(--hdw-panel-popup-radius);
+            background: var(--hdw-panel-popup-bg);
+            color: var(--hdw-panel-popup-text);
+            box-shadow: var(--hdw-panel-popup-shadow);
+            backdrop-filter: blur(12px);
             opacity: 0;
             visibility: hidden;
             pointer-events: none;
-            transition: opacity .15s linear, visibility .15s linear;
+            transition: opacity .15s linear, visibility .15s linear, transform .15s ease;
             z-index: 90;
         }
 
-        .hdw-aspect-ratio-wrap:hover #hdw-aspect-ratio-popup,
-        .hdw-aspect-ratio-wrap:focus-within #hdw-aspect-ratio-popup,
         .hdw-aspect-ratio-wrap.hdw-popup-open #hdw-aspect-ratio-popup {
             opacity: 1;
             visibility: visible;
             pointer-events: auto;
+            transform: translateX(-50%) translateY(-2px);
         }
 
         .hdw-aspect-ratio-title {
             display: block;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
             color: #fff;
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 600;
         }
 
@@ -680,48 +1126,68 @@
         }
 
         .hdw-aspect-ratio-option {
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 4px;
-            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--hdw-panel-item-border);
+            border-radius: var(--hdw-panel-item-radius);
+            background: var(--hdw-panel-item-bg);
             color: #fff;
-            padding: 5px 8px;
+            padding: 7px 10px;
             cursor: pointer;
             font-size: 12px;
             line-height: 1.2;
             text-align: center;
+            transition: background-color .16s linear, border-color .16s linear, color .16s linear;
         }
 
-        .hdw-aspect-ratio-option:hover {
-            background: rgba(255, 255, 255, 0.18);
+        .hdw-aspect-ratio-option:hover,
+        .hdw-aspect-ratio-option:focus-visible {
+            background: var(--hdw-panel-item-hover-bg);
+            border-color: var(--hdw-panel-item-hover-border);
+            outline: none;
         }
 
         .hdw-aspect-ratio-option.hdw-selected {
-            border-color: #1f618d;
-            background: #1f618d;
-        }
-
-        #audio-compressor-toggle-btn {
-            background: #2d2d2d;
-            color: #a5a5a5;
-            border: 0;
-            border-radius: 4px;
-            transition: background-color .2s linear, color .2s linear, box-shadow .2s linear, filter .2s linear;
-            height: 38px;
-            margin: 0;
-            outline: 0;
-            width: 46px;
-            font-size: 0;
-            cursor: pointer;
-            line-height: normal !important;
+            border-color: var(--hdw-panel-item-active-border);
+            background: var(--hdw-panel-item-active-bg);
         }
 
         #audio-compressor-toggle-btn::before {
-            content: 'C';
+            content: '';
             display: block;
-            font-size: 18px;
-            font-weight: 700;
-            line-height: 38px;
-            text-align: center;
+            width: 18px;
+            height: 16px;
+            margin: 11px auto 0;
+            background:
+                linear-gradient(currentColor, currentColor) 1px 8px / 2px 6px no-repeat,
+                linear-gradient(currentColor, currentColor) 5px 5px / 2px 12px no-repeat,
+                linear-gradient(currentColor, currentColor) 9px 2px / 2px 8px no-repeat,
+                linear-gradient(currentColor, currentColor) 13px 4px / 2px 14px no-repeat;
+        }
+
+        #audio-compressor-toggle-btn {
+            position: relative;
+            width: 54px;
+            padding: 0 14px 0 0;
+        }
+
+        #audio-compressor-toggle-btn::after {
+            content: '';
+            position: absolute;
+            right: 9px;
+            top: 50%;
+            width: 6px;
+            height: 6px;
+            margin-top: -4px;
+            border-right: 1.5px solid currentColor;
+            border-bottom: 1.5px solid currentColor;
+            transform: rotate(45deg);
+            opacity: 0.72;
+            transition: transform .16s ease, opacity .16s linear;
+        }
+
+        .hdw-compressor-wrap.hdw-popup-open #audio-compressor-toggle-btn::after,
+        #audio-compressor-toggle-btn.hdw-popup-trigger-open::after {
+            transform: rotate(225deg);
+            opacity: 1;
         }
 
         #audio-compressor-toggle-btn:hover {
@@ -736,88 +1202,425 @@
             color: #fff;
         }
 
-        #video-blur-toggle-btn,
-        #video-mirror-toggle-btn {
-            background: #2d2d2d;
-            color: #a5a5a5;
-            border: 0;
-            border-radius: 4px;
-            transition: background-color .2s linear, color .2s linear, box-shadow .2s linear, filter .2s linear;
-            height: 38px;
-            margin: 0;
-            outline: 0;
-            width: 46px;
-            font-size: 0;
+        .hdw-compressor-wrap {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        #hdw-audio-compressor-popup {
+            position: absolute;
+            left: 50%;
+            bottom: calc(100% + 8px);
+            transform: translateX(-50%);
+            width: 280px;
+            padding: 12px;
+            border: 1px solid var(--hdw-panel-popup-border);
+            border-radius: var(--hdw-panel-popup-radius);
+            background: var(--hdw-panel-popup-bg);
+            color: var(--hdw-panel-popup-text);
+            box-shadow: var(--hdw-panel-popup-shadow);
+            backdrop-filter: blur(12px);
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity .16s linear, visibility .16s linear, transform .16s ease;
+            z-index: 95;
+        }
+
+        .hdw-compressor-wrap.hdw-popup-open #hdw-audio-compressor-popup {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transform: translateX(-50%) translateY(-2px);
+        }
+
+        .hdw-compressor-popup-header {
+            display: grid;
+            gap: 3px;
+            margin-bottom: 10px;
+        }
+
+        .hdw-compressor-popup-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .hdw-compressor-popup-status {
+            margin-bottom: 10px;
+            color: var(--hdw-panel-popup-muted);
+            font-size: 11px;
+            line-height: 1.35;
+            min-height: 15px;
+        }
+
+        .hdw-compressor-popup-status.hdw-warning {
+            color: #f5c16c;
+        }
+
+        .hdw-compressor-popup-status.hdw-error {
+            color: #ff9c9c;
+        }
+
+        .hdw-compressor-popup-meter {
+            display: grid;
+            gap: 6px;
+            margin-bottom: 10px;
+            padding: 9px 10px;
+            border: 1px solid var(--hdw-panel-item-border);
+            border-radius: var(--hdw-panel-item-radius);
+            background: rgba(20, 26, 34, 0.82);
+        }
+
+        .hdw-compressor-popup-meter-line {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 11px;
+            line-height: 1.3;
+        }
+
+        .hdw-compressor-popup-meter-label {
+            color: var(--hdw-panel-popup-muted);
+            white-space: nowrap;
+        }
+
+        .hdw-compressor-popup-meter-value {
+            color: var(--hdw-panel-popup-text);
+            font-weight: 600;
+            text-align: right;
+        }
+
+        .hdw-compressor-popup-presets {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .hdw-compressor-popup-preset {
+            width: 100%;
+            border: 1px solid var(--hdw-panel-item-border);
+            border-radius: 8px;
+            background: var(--hdw-panel-item-bg);
+            color: var(--hdw-panel-popup-text);
+            padding: 8px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1;
             cursor: pointer;
-            line-height: normal !important;
+            transition: background-color .16s linear, border-color .16s linear, color .16s linear;
+            white-space: nowrap;
+            text-align: center;
+        }
+
+        .hdw-compressor-popup-preset:hover,
+        .hdw-compressor-popup-preset:focus-visible {
+            background: var(--hdw-panel-item-hover-bg);
+            border-color: var(--hdw-panel-item-hover-border);
+            color: #fff;
+            outline: none;
+        }
+
+        .hdw-compressor-popup-preset.hdw-active {
+            background: var(--hdw-panel-item-active-bg);
+            border-color: var(--hdw-panel-item-active-border);
+            color: #fff;
+        }
+
+        .hdw-compressor-popup-advanced {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 10px;
+            color: var(--hdw-panel-popup-text);
+            font-size: 12px;
+            user-select: none;
+            cursor: pointer;
+        }
+
+        .hdw-compressor-popup-advanced input[type="checkbox"] {
+            margin: 0;
+            accent-color: var(--hdw-panel-button-active-bg);
+        }
+
+        .hdw-compressor-popup-controls {
+            display: grid;
+            gap: 12px;
+        }
+
+        .hdw-compressor-popup-controls[hidden] {
+            display: none;
+        }
+
+        .hdw-compressor-popup-row {
+            display: grid;
+            gap: 8px;
+        }
+
+        .hdw-compressor-popup-row-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .hdw-compressor-popup-label-wrap {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        .hdw-compressor-popup-label {
+            color: #f1f4f7;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .hdw-compressor-popup-hint-trigger {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 13px;
+            height: 13px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.06);
+            color: #96a5b4;
+            font-size: 9px;
+            font-weight: 700;
+            line-height: 1;
+            flex: 0 0 auto;
+            cursor: help;
+        }
+
+        .hdw-compressor-popup-hint-trigger::before {
+            content: '?';
+        }
+
+        .hdw-compressor-popup-hint-trigger::after {
+            content: attr(data-hint);
+            position: absolute;
+            left: 0;
+            bottom: calc(100% + 8px);
+            z-index: 2;
+            width: max-content;
+            max-width: 210px;
+            padding: 7px 9px;
+            border: 1px solid var(--hdw-panel-item-hover-border);
+            border-radius: 8px;
+            background: rgba(6, 11, 17, 0.96);
+            box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
+            color: #d7e9fb;
+            font-size: 11px;
+            font-weight: 400;
+            line-height: 1.35;
+            white-space: normal;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity .14s linear, visibility .14s linear;
+        }
+
+        .hdw-compressor-popup-hint-trigger:hover::after,
+        .hdw-compressor-popup-hint-trigger:focus-visible::after {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .hdw-compressor-popup-value {
+            min-width: 58px;
+            color: #b8c2cb;
+            font-size: 12px;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .hdw-compressor-popup-slider {
+            width: 100%;
+            margin: 0;
+            height: 0;
+            padding: 0;
+            font-size: 0;
+            appearance: none;
+            -webkit-appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        .hdw-compressor-popup-slider::-webkit-slider-runnable-track {
+            height: 4px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.14);
+        }
+
+        .hdw-compressor-popup-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            margin-top: -4px;
+            border: 0;
+            border-radius: 999px;
+            background: #79b7f0;
+            box-shadow: 0 0 0 2px rgba(121, 183, 240, 0.14);
+        }
+
+        .hdw-compressor-popup-slider::-moz-range-track {
+            height: 4px;
+            border: 0;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.14);
+        }
+
+        .hdw-compressor-popup-slider::-moz-range-thumb {
+            width: 12px;
+            height: 12px;
+            border: 0;
+            border-radius: 999px;
+            background: #79b7f0;
+            box-shadow: 0 0 0 2px rgba(121, 183, 240, 0.14);
+        }
+
+        .hdw-compressor-popup-footer {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .hdw-compressor-popup-toggle-btn {
+            flex: 1 1 auto;
+            border: 1px solid rgba(95, 169, 224, 0.42);
+            border-radius: 8px;
+            background: rgba(31, 97, 141, 0.18);
+            color: #c7e5ff;
+            padding: 7px 10px;
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 1;
+            cursor: pointer;
+            transition: background-color .16s linear, border-color .16s linear, color .16s linear;
+        }
+
+        .hdw-compressor-popup-toggle-btn:hover,
+        .hdw-compressor-popup-toggle-btn:focus-visible {
+            background: rgba(31, 97, 141, 0.28);
+            border-color: rgba(95, 169, 224, 0.62);
+            color: #eef7ff;
+            outline: none;
+        }
+
+        .hdw-compressor-popup-toggle-btn.hdw-active {
+            border-color: rgba(226, 110, 110, 0.28);
+            background: rgba(168, 46, 46, 0.12);
+            color: #f0b2b2;
+        }
+
+        .hdw-compressor-popup-toggle-btn.hdw-active:hover,
+        .hdw-compressor-popup-toggle-btn.hdw-active:focus-visible {
+            background: rgba(168, 46, 46, 0.2);
+            border-color: rgba(236, 136, 136, 0.42);
+            color: #ffd1d1;
+        }
+
+        .hdw-compressor-popup-reset {
+            flex: 0 0 auto;
+            border: 1px solid var(--hdw-panel-item-border);
+            border-radius: 7px;
+            background: var(--hdw-panel-item-bg);
+            color: var(--hdw-panel-popup-text);
+            padding: 7px 11px;
+            font-size: 12px;
+            line-height: 1;
+            cursor: pointer;
+            transition: background-color .16s linear, border-color .16s linear, color .16s linear;
+        }
+
+        .hdw-compressor-popup-reset:hover,
+        .hdw-compressor-popup-reset:focus-visible {
+            background: var(--hdw-panel-item-hover-bg);
+            border-color: var(--hdw-panel-item-hover-border);
+            color: #fff;
+            outline: none;
         }
 
         #video-blur-toggle-btn::before {
-            content: 'Р';
+            content: '';
             display: block;
-            font-size: 17px;
-            font-weight: 700;
-            line-height: 38px;
-            text-align: center;
+            width: 16px;
+            height: 16px;
+            margin: 11px auto 0;
+            border-radius: 999px;
+            background:
+                radial-gradient(circle, currentColor 0 1.2px, transparent 1.3px) 0 0 / 5px 5px,
+                radial-gradient(circle, currentColor 0 1.2px, transparent 1.3px) 2.5px 2.5px / 5px 5px;
+            opacity: 0.95;
         }
 
         #video-mirror-toggle-btn::before {
-            content: 'З';
+            content: '';
             display: block;
-            font-size: 17px;
-            font-weight: 700;
-            line-height: 38px;
-            text-align: center;
-        }
-
-        #video-blur-toggle-btn:hover,
-        #video-mirror-toggle-btn:hover {
-            background: #414141;
-            color: #fff;
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
-            filter: saturate(1.2);
-        }
-
-        #video-blur-toggle-btn.hdw-active,
-        #video-mirror-toggle-btn.hdw-active {
-            background: #1f618d;
-            color: #fff;
-        }
-
-        #playback-info-overlay-toggle-btn {
-            background: #2d2d2d;
-            color: #a5a5a5;
-            border: 0;
-            border-radius: 4px;
-            transition: background-color .2s linear, color .2s linear, box-shadow .2s linear, filter .2s linear;
-            height: 38px;
-            margin: 0;
-            outline: 0;
-            width: 46px;
-            font-size: 0;
-            cursor: pointer;
-            line-height: normal !important;
+            width: 18px;
+            height: 14px;
+            margin: 12px auto 0;
+            background:
+                linear-gradient(currentColor, currentColor) center / 1px 14px no-repeat,
+                linear-gradient(currentColor, currentColor) 2px center / 6px 10px no-repeat,
+                linear-gradient(currentColor, currentColor) 10px center / 6px 10px no-repeat;
+            box-shadow: inset 0 0 0 1px transparent;
         }
 
         #playback-info-overlay-toggle-btn::before {
-            content: 'О';
+            content: '';
             display: block;
-            font-size: 17px;
-            font-weight: 700;
-            line-height: 38px;
-            text-align: center;
+            width: 18px;
+            height: 14px;
+            margin: 12px auto 0;
+            background:
+                linear-gradient(currentColor, currentColor) left top / 6px 2px no-repeat,
+                linear-gradient(currentColor, currentColor) left top / 2px 6px no-repeat,
+                linear-gradient(currentColor, currentColor) right top / 6px 2px no-repeat,
+                linear-gradient(currentColor, currentColor) right top / 2px 6px no-repeat,
+                linear-gradient(currentColor, currentColor) left bottom / 6px 2px no-repeat,
+                linear-gradient(currentColor, currentColor) left bottom / 2px 6px no-repeat,
+                linear-gradient(currentColor, currentColor) right bottom / 6px 2px no-repeat,
+                linear-gradient(currentColor, currentColor) right bottom / 2px 6px no-repeat,
+                linear-gradient(currentColor, currentColor) center / 8px 1.5px no-repeat;
         }
 
-        #playback-info-overlay-toggle-btn:hover {
-            background: #414141;
-            color: #fff;
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
-            filter: saturate(1.2);
+        #playback-info-overlay-toggle-btn {
+            position: relative;
+            width: 54px;
+            padding: 0 14px 0 0;
         }
 
-        #playback-info-overlay-toggle-btn.hdw-active {
-            background: #1f618d;
-            color: #fff;
+        #playback-info-overlay-toggle-btn::after {
+            content: '';
+            position: absolute;
+            right: 9px;
+            top: 50%;
+            width: 6px;
+            height: 6px;
+            margin-top: -4px;
+            border-right: 1.5px solid currentColor;
+            border-bottom: 1.5px solid currentColor;
+            transform: rotate(45deg);
+            opacity: 0.72;
+            transition: transform .16s ease, opacity .16s linear;
+        }
+
+        .hdw-overlay-toggle-wrap.hdw-popup-open #playback-info-overlay-toggle-btn::after,
+        #playback-info-overlay-toggle-btn.hdw-popup-trigger-open::after {
+            transform: rotate(225deg);
+            opacity: 1;
         }
 
         .hdw-overlay-toggle-wrap {
@@ -829,56 +1632,192 @@
         #hdw-overlay-settings-popup {
             position: absolute;
             left: 50%;
-            bottom: calc(100% - 1px);
-            margin-bottom: 0;
-            transform: translateX(-50%);
-            min-width: 160px;
-            width: max-content;
-            padding: 10px 12px;
-            border-radius: 6px;
-            background: rgba(12, 12, 12, 0.95);
-            color: #e8e8e8;
-            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4);
+            bottom: calc(100% + 8px);
+            width: 240px;
+            transform: translateX(-50%) translateY(4px);
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: rgba(18, 20, 24, 0.98);
+            color: #eef3f8;
+            box-shadow: 0 16px 34px rgba(0, 0, 0, 0.38);
+            backdrop-filter: blur(14px);
             font-size: 12px;
-            line-height: 1.35;
-            white-space: nowrap;
             opacity: 0;
             visibility: hidden;
             pointer-events: none;
-            transition: opacity .15s linear, visibility .15s linear;
-            z-index: 90;
+            transition: opacity .16s linear, visibility .16s linear, transform .16s ease;
+            z-index: 120;
         }
 
-        .hdw-overlay-toggle-wrap:hover #hdw-overlay-settings-popup,
-        .hdw-overlay-toggle-wrap:focus-within #hdw-overlay-settings-popup,
         .hdw-overlay-toggle-wrap.hdw-popup-open #hdw-overlay-settings-popup {
             opacity: 1;
             visibility: visible;
             pointer-events: auto;
+            transform: translateX(-50%) translateY(-2px);
+        }
+
+        #hdw-overlay-settings-popup .hdw-overlay-settings-header {
+            display: grid;
+            gap: 3px;
+            margin-bottom: 10px;
         }
 
         #hdw-overlay-settings-popup .hdw-overlay-settings-title {
-            display: block;
-            margin-bottom: 6px;
             color: #fff;
-            font-weight: 600;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        #hdw-overlay-settings-popup .hdw-overlay-settings-current {
+            color: #9db2c6;
+            font-size: 11px;
+            line-height: 1.35;
+        }
+
+        #hdw-overlay-settings-popup .hdw-overlay-settings-list {
+            display: grid;
+            gap: 7px;
         }
 
         #hdw-overlay-settings-popup .hdw-overlay-settings-item {
             display: flex;
             align-items: center;
-            gap: 7px;
+            width: 100%;
+            gap: 10px;
+            justify-content: flex-start;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 9px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #eef3f8;
+            padding: 10px 12px;
+            text-align: left;
             cursor: pointer;
-            user-select: none;
+            transition: background-color .16s linear, border-color .16s linear, color .16s linear, transform .16s ease;
         }
 
-        #hdw-overlay-settings-popup .hdw-overlay-settings-item + .hdw-overlay-settings-item {
-            margin-top: 5px;
+        #hdw-overlay-settings-popup .hdw-overlay-settings-item:hover,
+        #hdw-overlay-settings-popup .hdw-overlay-settings-item:focus-visible {
+            background: rgba(31, 97, 141, 0.18);
+            border-color: rgba(95, 169, 224, 0.42);
+            color: #fff;
+            outline: none;
         }
 
-        #hdw-overlay-settings-popup .hdw-overlay-settings-item input[type="checkbox"] {
-            margin: 0;
-            accent-color: #1f618d;
+        #hdw-overlay-settings-popup .hdw-overlay-settings-item:active {
+            transform: translateY(1px);
+        }
+
+        #hdw-overlay-settings-popup .hdw-overlay-settings-item.hdw-active {
+            background: rgba(31, 97, 141, 0.32);
+            border-color: rgba(95, 169, 224, 0.65);
+            color: #fff;
+        }
+
+        #hdw-overlay-settings-popup .hdw-overlay-settings-label {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+
+        #hdw-overlay-settings-popup .hdw-overlay-settings-name {
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+
+        #hdw-overlay-settings-popup .hdw-overlay-settings-hint-trigger {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 14px;
+            height: 14px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--hdw-panel-popup-muted);
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 1;
+            flex: 0 0 auto;
+            cursor: help;
+        }
+
+        #hdw-overlay-settings-popup .hdw-overlay-settings-hint-trigger::before {
+            content: '?';
+        }
+
+        #hdw-overlay-settings-popup .hdw-overlay-settings-hint-trigger::after {
+            content: attr(data-hint);
+            position: absolute;
+            left: 0;
+            bottom: calc(100% + 8px);
+            z-index: 2;
+            width: max-content;
+            max-width: 190px;
+            padding: 7px 9px;
+            border: 1px solid var(--hdw-panel-item-hover-border);
+            border-radius: 8px;
+            background: rgba(6, 11, 17, 0.96);
+            box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
+            color: #d7e9fb;
+            font-size: 11px;
+            line-height: 1.35;
+            white-space: normal;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity .14s linear, visibility .14s linear;
+        }
+
+        #hdw-overlay-settings-popup .hdw-overlay-settings-hint-trigger:hover::after,
+        #hdw-overlay-settings-popup .hdw-overlay-settings-hint-trigger:focus-visible::after {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        #hdw-overlay-settings-popup .hdw-overlay-settings-footer {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        #hdw-overlay-settings-popup .hdw-overlay-settings-toggle-btn {
+            width: 100%;
+            border: 1px solid rgba(95, 169, 224, 0.42);
+            border-radius: 8px;
+            background: rgba(31, 97, 141, 0.18);
+            color: #c7e5ff;
+            padding: 7px 10px;
+            font-size: 12px;
+            line-height: 1;
+            cursor: pointer;
+            transition: background-color .16s linear, border-color .16s linear, color .16s linear;
+        }
+
+        #hdw-overlay-settings-popup .hdw-overlay-settings-toggle-btn:hover,
+        #hdw-overlay-settings-popup .hdw-overlay-settings-toggle-btn:focus-visible {
+            background: rgba(31, 97, 141, 0.28);
+            border-color: rgba(95, 169, 224, 0.62);
+            color: #eef7ff;
+            outline: none;
+        }
+
+        #hdw-overlay-settings-popup .hdw-overlay-settings-toggle-btn.hdw-active {
+            background: rgba(168, 46, 46, 0.12);
+            border-color: rgba(226, 110, 110, 0.28);
+            color: #f0b2b2;
+        }
+
+        #hdw-overlay-settings-popup .hdw-overlay-settings-toggle-btn.hdw-active:hover,
+        #hdw-overlay-settings-popup .hdw-overlay-settings-toggle-btn.hdw-active:focus-visible {
+            background: rgba(168, 46, 46, 0.2);
+            border-color: rgba(236, 136, 136, 0.42);
+            color: #ffd1d1;
         }
 
         #hdw-playback-info-overlay {
@@ -1005,7 +1944,10 @@
             position: fixed;
             inset: 0;
             z-index: 5500;
-            background: rgba(9, 22, 28, 0.88);
+            background:
+                radial-gradient(circle at top center, rgba(34, 78, 101, 0.16), transparent 38%),
+                rgba(6, 12, 16, 0.96);
+            backdrop-filter: blur(6px);
             display: none;
         }
 
@@ -1024,6 +1966,9 @@
             box-sizing: border-box;
             max-height: 30vh;
             overflow-y: auto;
+            background: rgba(15, 18, 22, 0.78);
+            backdrop-filter: blur(6px);
+            border-radius: 10px;
         }
 
         body.hdw-theater-mode .hdw-theater-player-block {
@@ -1037,6 +1982,8 @@
             box-sizing: border-box;
             height: var(--hdw-player-available-height) !important;
             overflow: hidden;
+            background: rgba(8, 11, 14, 0.42);
+            border-radius: 12px;
         }
 
         body.hdw-theater-mode .hdw-theater-player-block > .b-player {
@@ -1213,7 +2160,7 @@
 
         static normalizeItems(rawValue) {
             if (Array.isArray(rawValue)) {
-                return rawValue;
+                return rawValue.map((item) => this.normalizeBookmarkItem(item)).filter(Boolean);
             }
 
             if (typeof rawValue === 'string') {
@@ -1234,12 +2181,22 @@
                 if (values.length && values.every((item) => item && typeof item === 'object')) {
                     const hasBookmarkShape = values.some((item) => item.url || item.title);
                     if (hasBookmarkShape) {
-                        return values;
+                        return values.map((item) => this.normalizeBookmarkItem(item)).filter(Boolean);
                     }
                 }
             }
 
             return [];
+        }
+
+        static normalizeBookmarkItem(item) {
+            if (!item || typeof item !== 'object') {
+                return null;
+            }
+
+            const normalizedItem = { ...item };
+            normalizedItem.listState = getEffectiveListState(item);
+            return normalizedItem;
         }
 
         static tryRecoverFromOtherKeys() {
@@ -1276,6 +2233,9 @@
             const raw = GM_getValue(this.getKey(), []);
             const items = this.normalizeItems(raw);
             if (items.length > 0) {
+                if (JSON.stringify(raw) !== JSON.stringify(items)) {
+                    this.saveItems(items);
+                }
                 return items;
             }
 
@@ -1464,19 +2424,38 @@
         static getAll() {
             return StorageManager.getAllItems();
         }
+
+        static normalizeBookmarkInput(item, fallbackState = LIST_STATES.favorite) {
+            if (!item || typeof item !== 'object') {
+                return null;
+            }
+
+            return {
+                ...item,
+                listState: normalizeListState(item.listState, fallbackState)
+            };
+        }
         
         static add(item) {
             const items = this.getAll();
+            const normalizedItem = this.normalizeBookmarkInput(item);
+            if (!normalizedItem) {
+                return;
+            }
             // Используем нормализованный URL для проверки существования закладки
-            const normalizedUrl = normalizeUrl(item.url);
+            const normalizedUrl = normalizeUrl(normalizedItem.url);
             const existingIndex = items.findIndex(existingItem => normalizeUrl(existingItem.url) === normalizedUrl);
             
             if (existingIndex !== -1) {
                 // Если закладка уже существует, обновляем её
-                items[existingIndex] = item;
+                items[existingIndex] = {
+                    ...items[existingIndex],
+                    ...normalizedItem,
+                    listState: normalizeListState(normalizedItem.listState, getEffectiveListState(items[existingIndex]))
+                };
             } else {
                 // Если закладка новая, добавляем её
-                items.push(item);
+                items.push(normalizedItem);
             }
             
             StorageManager.saveItems(items);
@@ -1505,6 +2484,50 @@
             const items = this.getAll();
             const normalizedUrl = normalizeUrl(url);
             return items.find(item => normalizeUrl(item.url) === normalizedUrl);
+        }
+
+        static getListState(url) {
+            const item = this.findByUrl(url);
+            return item ? getEffectiveListState(item) : null;
+        }
+
+        static setListState(url, listState, itemData = null) {
+            const normalizedUrl = normalizeUrl(url);
+            const nextState = normalizeListState(listState, null);
+            const items = this.getAll();
+            const existingIndex = items.findIndex(item => normalizeUrl(item.url) === normalizedUrl);
+
+            if (existingIndex === -1) {
+                if (!nextState || !itemData) {
+                    return null;
+                }
+
+                const nextItem = this.normalizeBookmarkInput(itemData, nextState);
+                if (!nextItem) {
+                    return null;
+                }
+
+                items.push(nextItem);
+                StorageManager.saveItems(items);
+                return nextItem;
+            }
+
+            if (!nextState) {
+                const [removedItem] = items.splice(existingIndex, 1);
+                StorageManager.saveItems(items);
+                return removedItem || null;
+            }
+
+            const currentItem = items[existingIndex];
+            const nextItem = {
+                ...currentItem,
+                ...(itemData && typeof itemData === 'object' ? itemData : {}),
+                id: currentItem.id,
+                listState: nextState
+            };
+            items[existingIndex] = this.normalizeBookmarkInput(nextItem, nextState);
+            StorageManager.saveItems(items);
+            return items[existingIndex];
         }
         
         static updateProgress(id, progress) {
@@ -1571,6 +2594,233 @@
         mirror: { code: 'KeyM', label: 'Alt+M' }
     });
 
+    const LIST_STATES = Object.freeze({
+        favorite: 'favorite',
+        watching: 'watching',
+        later: 'later',
+        completed: 'completed',
+        abandoned: 'abandoned'
+    });
+
+    const VALID_LIST_STATES = new Set(Object.values(LIST_STATES));
+
+    const LIST_STATE_OPTIONS = Object.freeze([
+        Object.freeze({ value: LIST_STATES.favorite, label: 'В избранное', icon: '★' }),
+        Object.freeze({ value: LIST_STATES.watching, label: 'Смотрю', icon: '▶' }),
+        Object.freeze({ value: LIST_STATES.later, label: 'Смотреть позже', icon: '⏳' }),
+        Object.freeze({ value: LIST_STATES.completed, label: 'Просмотрено', icon: '✓' }),
+        Object.freeze({ value: LIST_STATES.abandoned, label: 'Брошено', icon: '✕' })
+    ]);
+
+    const ASPECT_RATIO_OPTIONS = Object.freeze([
+        Object.freeze({ value: '16:9', label: '16:9', cssValue: '16 / 9' }),
+        Object.freeze({ value: '12:5', label: '12:5', cssValue: '12 / 5' }),
+        Object.freeze({ value: '4:3', label: '4:3', cssValue: '4 / 3' })
+    ]);
+
+    const COMPRESSOR_PRESETS = Object.freeze({
+        soft: Object.freeze({
+            label: 'Soft',
+            settings: Object.freeze({ threshold: -36, knee: 24, ratio: 2.5, attack: 0.02, release: 0.18, outputGain: 1.05 })
+        }),
+        night: Object.freeze({
+            label: 'Night',
+            settings: Object.freeze({ threshold: -48, knee: 34, ratio: 6, attack: 0.01, release: 0.28, outputGain: 1.12 })
+        }),
+        voice_boost: Object.freeze({
+            label: 'Voice Boost',
+            settings: Object.freeze({ threshold: -42, knee: 20, ratio: 4.5, attack: 0.01, release: 0.16, outputGain: 1.18 })
+        }),
+        strong: Object.freeze({
+            label: 'Strong',
+            settings: Object.freeze({ threshold: -50, knee: 40, ratio: 12, attack: 0, release: 0.25, outputGain: 1.22 })
+        }),
+        custom: Object.freeze({
+            label: 'Custom',
+            settings: null
+        })
+    });
+
+    const DEFAULT_COMPRESSOR_PRESET = 'strong';
+
+    function normalizeListState(value, fallback = null) {
+        return VALID_LIST_STATES.has(value) ? value : fallback;
+    }
+
+    function getEffectiveListState(item) {
+        if (!item || typeof item !== 'object') {
+            return null;
+        }
+
+        return normalizeListState(item.listState, LIST_STATES.favorite);
+    }
+
+    function getListStateLabel(listState) {
+        switch (normalizeListState(listState, null)) {
+            case LIST_STATES.favorite:
+                return 'В избранном';
+            case LIST_STATES.watching:
+                return 'Смотрю';
+            case LIST_STATES.later:
+                return 'Смотреть позже';
+            case LIST_STATES.completed:
+                return 'Просмотрено';
+            case LIST_STATES.abandoned:
+                return 'Брошено';
+            default:
+                return 'Без статуса';
+        }
+    }
+
+    function getListStateOption(listState) {
+        const normalized = normalizeListState(listState, null);
+        return LIST_STATE_OPTIONS.find((option) => option.value === normalized) || null;
+    }
+
+    const COMPRESSOR_PARAMETER_SCHEMA = Object.freeze({
+        threshold: Object.freeze({
+            label: 'Threshold',
+            description: 'Порог начала компрессии',
+            min: -100,
+            max: 0,
+            step: 1,
+            defaultValue: -50,
+            formatValue: (value) => `${Math.round(value)} dB`
+        }),
+        knee: Object.freeze({
+            label: 'Knee',
+            description: 'Плавность входа в компрессию',
+            min: 0,
+            max: 40,
+            step: 1,
+            defaultValue: 40,
+            formatValue: (value) => `${Math.round(value)} dB`
+        }),
+        ratio: Object.freeze({
+            label: 'Ratio',
+            description: 'Сила сжатия громкости',
+            min: 1,
+            max: 20,
+            step: 0.1,
+            defaultValue: 12,
+            formatValue: (value) => `${Number(value).toFixed(1).replace(/\.0$/, '')}:1`
+        }),
+        attack: Object.freeze({
+            label: 'Attack',
+            description: 'Скорость начала сжатия',
+            min: 0,
+            max: 1,
+            step: 0.01,
+            defaultValue: 0,
+            formatValue: (value) => `${Number(value).toFixed(2).replace(/0+$/, '').replace(/\.$/, '') || '0'} с`
+        }),
+        release: Object.freeze({
+            label: 'Release',
+            description: 'Скорость восстановления уровня',
+            min: 0,
+            max: 1,
+            step: 0.01,
+            defaultValue: 0.25,
+            formatValue: (value) => `${Number(value).toFixed(2).replace(/0+$/, '').replace(/\.$/, '') || '0'} с`
+        }),
+        outputGain: Object.freeze({
+            label: 'Output Gain',
+            description: 'Компенсация громкости после компрессии',
+            min: 0.5,
+            max: 2,
+            step: 0.05,
+            defaultValue: 1.22,
+            formatValue: (value) => `${Number(value).toFixed(2).replace(/0+$/, '').replace(/\.$/, '') || '1'}x`
+        })
+    });
+
+    function clampNumber(value, min, max) {
+        return Math.min(max, Math.max(min, value));
+    }
+
+    function roundToStep(value, step) {
+        if (!step) {
+            return value;
+        }
+
+        return Math.round(value / step) * step;
+    }
+
+    function getDefaultCompressorSettings() {
+        const presetSettings = COMPRESSOR_PRESETS[DEFAULT_COMPRESSOR_PRESET]?.settings;
+        if (presetSettings) {
+            return { ...presetSettings };
+        }
+
+        return Object.fromEntries(
+            Object.entries(COMPRESSOR_PARAMETER_SCHEMA).map(([key, schema]) => [key, schema.defaultValue])
+        );
+    }
+
+    function normalizeCompressorSettings(rawValue) {
+        const defaults = getDefaultCompressorSettings();
+        const source = rawValue && typeof rawValue === 'object' ? rawValue : {};
+
+        return Object.fromEntries(
+            Object.entries(COMPRESSOR_PARAMETER_SCHEMA).map(([key, schema]) => {
+                const rawNumber = Number(source[key]);
+                const fallbackValue = defaults[key];
+                const normalizedValue = Number.isFinite(rawNumber) ? rawNumber : fallbackValue;
+                const steppedValue = roundToStep(normalizedValue, schema.step);
+                return [key, clampNumber(steppedValue, schema.min, schema.max)];
+            })
+        );
+    }
+
+    function areCompressorSettingsEqual(left, right) {
+        const normalizedLeft = normalizeCompressorSettings(left);
+        const normalizedRight = normalizeCompressorSettings(right);
+        return Object.keys(COMPRESSOR_PARAMETER_SCHEMA).every((key) => normalizedLeft[key] === normalizedRight[key]);
+    }
+
+    function detectCompressorPreset(settings) {
+        const normalizedSettings = normalizeCompressorSettings(settings);
+        const presetEntry = Object.entries(COMPRESSOR_PRESETS).find(([presetKey, preset]) => (
+            presetKey !== 'custom'
+            && preset.settings
+            && areCompressorSettingsEqual(normalizedSettings, preset.settings)
+        ));
+
+        return presetEntry ? presetEntry[0] : 'custom';
+    }
+
+    function normalizeCompressorPreset(value) {
+        return Object.prototype.hasOwnProperty.call(COMPRESSOR_PRESETS, value) ? value : DEFAULT_COMPRESSOR_PRESET;
+    }
+
+    function normalizeCompressorState(rawValue) {
+        if (!rawValue || typeof rawValue !== 'object' || Array.isArray(rawValue)) {
+            const settings = normalizeCompressorSettings(rawValue);
+            return {
+                preset: detectCompressorPreset(settings),
+                advancedMode: false,
+                settings
+            };
+        }
+
+        const rawSettings = rawValue.settings && typeof rawValue.settings === 'object'
+            ? rawValue.settings
+            : rawValue;
+        const settings = normalizeCompressorSettings(rawSettings);
+        const requestedPreset = normalizeCompressorPreset(rawValue.preset);
+        const preset = requestedPreset === 'custom'
+            ? 'custom'
+            : (areCompressorSettingsEqual(settings, COMPRESSOR_PRESETS[requestedPreset].settings)
+                ? requestedPreset
+                : detectCompressorPreset(settings));
+
+        return {
+            preset,
+            advancedMode: !!rawValue.advancedMode,
+            settings
+        };
+    }
+
     function isAltHotkey(event, code) {
         return event.altKey && !event.ctrlKey && !event.shiftKey && !event.metaKey && event.code === code;
     }
@@ -1602,6 +2852,19 @@
         playerContainer.insertAdjacentElement('afterend', wrapper);
 
         return buttons;
+    }
+
+    function markPanelControlGroup(element, groupName, options = {}) {
+        if (!element) {
+            return element;
+        }
+
+        const normalizedGroup = groupName === 'secondary' ? 'secondary' : 'primary';
+        element.classList.add(`hdw-panel-${normalizedGroup}`);
+        if (options.isGroupStart) {
+            element.classList.add('hdw-panel-group-start');
+        }
+        return element;
     }
 
     function bindPopupHoverPersistence(wrapper, popup) {
@@ -1647,15 +2910,163 @@
         });
     }
 
+    const popupClickControllers = new Set();
+
+    function bindPopupClickToggle(wrapper, trigger, popup, options = {}) {
+        if (!wrapper || !trigger || !popup) {
+            return { open() {}, close() {}, isOpen() { return false; } };
+        }
+
+        const OPEN_CLASS = 'hdw-popup-open';
+        const TRIGGER_OPEN_CLASS = 'hdw-popup-trigger-open';
+
+        const syncState = (opened) => {
+            trigger.setAttribute('aria-expanded', opened ? 'true' : 'false');
+            trigger.classList.toggle(TRIGGER_OPEN_CLASS, opened);
+            if (typeof options.onToggle === 'function') {
+                options.onToggle(opened);
+            }
+        };
+
+        const isOpen = () => wrapper.classList.contains(OPEN_CLASS);
+        const open = () => {
+            popupClickControllers.forEach((controller) => {
+                if (controller.wrapper !== wrapper) {
+                    controller.close();
+                }
+            });
+            wrapper.classList.add(OPEN_CLASS);
+            syncState(true);
+        };
+        const close = () => {
+            wrapper.classList.remove(OPEN_CLASS);
+            syncState(false);
+        };
+
+        trigger.setAttribute('aria-haspopup', 'dialog');
+        syncState(false);
+
+        trigger.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (isOpen()) {
+                close();
+                return;
+            }
+            if (typeof options.shouldOpenOnTrigger === 'function' && !options.shouldOpenOnTrigger(event)) {
+                close();
+                return;
+            }
+            open();
+        });
+
+        popup.addEventListener('click', (event) => {
+            event.stopPropagation();
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!wrapper.contains(event.target)) {
+                close();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                close();
+            }
+        });
+
+        const controller = { wrapper, open, close, isOpen };
+        popupClickControllers.add(controller);
+        return controller;
+    }
+
     class AudioCompressorModule {
-        constructor(storageKey) {
+        constructor(storageKey, settingsStorageKey) {
             this.storageKey = storageKey;
+            this.settingsStorageKey = settingsStorageKey;
             this.enabled = GM_getValue(storageKey, false);
+            const normalizedState = normalizeCompressorState(
+                GM_getValue(settingsStorageKey, {
+                    preset: DEFAULT_COMPRESSOR_PRESET,
+                    advancedMode: false,
+                    settings: getDefaultCompressorSettings()
+                })
+            );
+            this.settings = normalizedState.settings;
+            this.preset = normalizedState.preset;
+            this.advancedMode = normalizedState.advancedMode;
             this.states = new WeakMap();
             this.currentVideo = null;
             this.observer = null;
             this.videoEvents = null;
             this.initialized = false;
+            this.statusMessage = '';
+            this.statusTone = 'neutral';
+            this.availability = {
+                kind: 'idle',
+                message: ''
+            };
+            this.popupController = null;
+            this.settingsInputs = {};
+            this.settingsValueNodes = {};
+            this.presetButtons = {};
+            this.toggleButton = null;
+            this.advancedModeInput = null;
+            this.controlsNode = null;
+            this.statusNode = null;
+            this.meterNode = null;
+        }
+
+        setAvailability(kind, message = '') {
+            this.availability = { kind, message };
+        }
+
+        isFeatureUnsupported() {
+            const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+            return !AudioContextCtor || typeof DynamicsCompressorNode === 'undefined' || typeof GainNode === 'undefined';
+        }
+
+        getStatusSnapshot() {
+            if (this.availability.kind === 'unsupported') {
+                return {
+                    text: this.availability.message || 'Браузер не поддерживает AudioContext или компрессор.',
+                    tone: 'error'
+                };
+            }
+
+            if (this.availability.kind === 'error') {
+                return {
+                    text: this.availability.message || 'Не удалось инициализировать аудиообработку для этого видео.',
+                    tone: 'error'
+                };
+            }
+
+            if (this.availability.kind === 'blocked') {
+                return {
+                    text: this.availability.message || 'Нужен user gesture: клик по плееру или повторное включение компрессора.',
+                    tone: 'warning'
+                };
+            }
+
+            if (this.availability.kind === 'no-video') {
+                return {
+                    text: this.availability.message || 'Видео еще не найдено. Настройки сохранятся и применятся позже.',
+                    tone: 'neutral'
+                };
+            }
+
+            if (this.statusMessage) {
+                return {
+                    text: this.statusMessage,
+                    tone: this.statusTone || 'neutral'
+                };
+            }
+
+            return {
+                text: 'Настройки применяются к текущему видео сразу.',
+                tone: 'neutral'
+            };
         }
 
         init() {
@@ -1685,9 +3096,272 @@
             button.id = 'audio-compressor-toggle-btn';
             button.type = 'button';
             button.title = this.buildButtonTitle();
-            button.addEventListener('click', () => this.toggle(true));
 
-            panelButtons.insertBefore(button, panelButtons.firstChild);
+            const wrapper = document.createElement('div');
+            wrapper.className = 'hdw-compressor-wrap';
+
+            const popup = this.createSettingsPopup();
+            wrapper.appendChild(popup);
+            wrapper.appendChild(button);
+            this.popupController = bindPopupClickToggle(wrapper, button, popup);
+
+            panelButtons.insertBefore(wrapper, panelButtons.firstChild);
+            this.updatePopupState();
+        }
+
+        createSettingsPopup() {
+            const popup = document.createElement('div');
+            popup.id = 'hdw-audio-compressor-popup';
+
+            const header = document.createElement('div');
+            header.className = 'hdw-compressor-popup-header';
+
+            const title = document.createElement('span');
+            title.className = 'hdw-compressor-popup-title';
+            title.textContent = 'Компрессор';
+            header.appendChild(title);
+            popup.appendChild(header);
+
+            const status = document.createElement('div');
+            status.className = 'hdw-compressor-popup-status';
+            this.statusNode = status;
+            popup.appendChild(status);
+
+            const meter = document.createElement('div');
+            meter.className = 'hdw-compressor-popup-meter';
+            this.meterNode = meter;
+            popup.appendChild(meter);
+
+            const presets = document.createElement('div');
+            presets.className = 'hdw-compressor-popup-presets';
+            Object.entries(COMPRESSOR_PRESETS).forEach(([presetKey, preset]) => {
+                const presetButton = document.createElement('button');
+                presetButton.type = 'button';
+                presetButton.className = 'hdw-compressor-popup-preset';
+                presetButton.textContent = preset.label;
+                presetButton.addEventListener('click', () => this.applyPreset(presetKey));
+                this.presetButtons[presetKey] = presetButton;
+                presets.appendChild(presetButton);
+            });
+            popup.appendChild(presets);
+
+            const advancedLabel = document.createElement('label');
+            advancedLabel.className = 'hdw-compressor-popup-advanced';
+
+            const advancedInput = document.createElement('input');
+            advancedInput.type = 'checkbox';
+            advancedInput.checked = this.advancedMode;
+            advancedInput.addEventListener('change', () => {
+                this.setAdvancedMode(advancedInput.checked);
+            });
+            this.advancedModeInput = advancedInput;
+
+            const advancedText = document.createElement('span');
+            advancedText.textContent = 'Расширенный режим';
+
+            advancedLabel.appendChild(advancedInput);
+            advancedLabel.appendChild(advancedText);
+            popup.appendChild(advancedLabel);
+
+            const controls = document.createElement('div');
+            controls.className = 'hdw-compressor-popup-controls';
+            this.controlsNode = controls;
+
+            Object.entries(COMPRESSOR_PARAMETER_SCHEMA).forEach(([key, schema]) => {
+                controls.appendChild(this.createParameterControl(key, schema));
+            });
+
+            popup.appendChild(controls);
+
+            const footer = document.createElement('div');
+            footer.className = 'hdw-compressor-popup-footer';
+
+            const toggleButton = document.createElement('button');
+            toggleButton.type = 'button';
+            toggleButton.className = 'hdw-compressor-popup-toggle-btn';
+            toggleButton.addEventListener('click', () => {
+                this.setEnabled(!this.enabled, true);
+            });
+            footer.appendChild(toggleButton);
+            this.toggleButton = toggleButton;
+
+            const resetButton = document.createElement('button');
+            resetButton.type = 'button';
+            resetButton.className = 'hdw-compressor-popup-reset';
+            resetButton.textContent = 'Сбросить';
+            resetButton.addEventListener('click', () => {
+                this.resetSettings();
+            });
+
+            footer.appendChild(resetButton);
+            popup.appendChild(footer);
+
+            return popup;
+        }
+
+        createParameterControl(key, schema) {
+            const row = document.createElement('div');
+            row.className = 'hdw-compressor-popup-row';
+
+            const head = document.createElement('div');
+            head.className = 'hdw-compressor-popup-row-head';
+
+            const labelWrap = document.createElement('div');
+            labelWrap.className = 'hdw-compressor-popup-label-wrap';
+
+            const label = document.createElement('span');
+            label.className = 'hdw-compressor-popup-label';
+            label.textContent = schema.label;
+            labelWrap.appendChild(label);
+
+            if (schema.description) {
+                const hintTrigger = document.createElement('span');
+                hintTrigger.className = 'hdw-compressor-popup-hint-trigger';
+                hintTrigger.dataset.hint = schema.description;
+                hintTrigger.tabIndex = 0;
+                labelWrap.appendChild(hintTrigger);
+            }
+
+            const value = document.createElement('span');
+            value.className = 'hdw-compressor-popup-value';
+            this.settingsValueNodes[key] = value;
+
+            head.appendChild(labelWrap);
+            head.appendChild(value);
+            row.appendChild(head);
+
+            const input = document.createElement('input');
+            input.type = 'range';
+            input.className = 'hdw-compressor-popup-slider';
+            input.min = String(schema.min);
+            input.max = String(schema.max);
+            input.step = String(schema.step);
+            input.value = String(this.settings[key]);
+            input.addEventListener('input', () => {
+                const nextValue = Number(input.value);
+                this.updateSettings({ [key]: nextValue });
+            });
+            this.settingsInputs[key] = input;
+            row.appendChild(input);
+
+            this.updateParameterControlValue(key);
+            return row;
+        }
+
+        formatParameterValue(key, value) {
+            const schema = COMPRESSOR_PARAMETER_SCHEMA[key];
+            if (!schema) {
+                return String(value);
+            }
+
+            return typeof schema.formatValue === 'function'
+                ? schema.formatValue(value)
+                : String(value);
+        }
+
+        updateParameterControlValue(key) {
+            const input = this.settingsInputs[key];
+            const valueNode = this.settingsValueNodes[key];
+            if (!input || !valueNode) {
+                return;
+            }
+
+            const value = this.settings[key];
+            input.value = String(value);
+            valueNode.textContent = this.formatParameterValue(key, value);
+        }
+
+        getCompressionIntensityLabel() {
+            const ratio = Number(this.settings.ratio);
+            const threshold = Number(this.settings.threshold);
+
+            if (ratio <= 1.5 || threshold >= -18) {
+                return 'Без компрессии';
+            }
+
+            if (ratio <= 3 || threshold >= -30) {
+                return 'Мягкая компрессия';
+            }
+
+            if (ratio <= 6 || threshold >= -42) {
+                return 'Умеренная компрессия';
+            }
+
+            if (ratio <= 10 || threshold >= -54) {
+                return 'Агрессивная компрессия';
+            }
+
+            return 'Почти лимитер';
+        }
+
+        renderMeterSummary() {
+            if (!this.meterNode) {
+                return;
+            }
+
+            const presetLabel = COMPRESSOR_PRESETS[this.preset]?.label || COMPRESSOR_PRESETS.custom.label;
+            const rows = [
+                ['Preset', presetLabel],
+                ['Профиль', this.getCompressionIntensityLabel()],
+                ['Threshold', this.formatParameterValue('threshold', this.settings.threshold)],
+                ['Output Gain', this.formatParameterValue('outputGain', this.settings.outputGain)]
+            ];
+
+            this.meterNode.replaceChildren(
+                ...rows.map(([label, value]) => {
+                    const line = document.createElement('div');
+                    line.className = 'hdw-compressor-popup-meter-line';
+
+                    const labelNode = document.createElement('span');
+                    labelNode.className = 'hdw-compressor-popup-meter-label';
+                    labelNode.textContent = label;
+
+                    const valueNode = document.createElement('span');
+                    valueNode.className = 'hdw-compressor-popup-meter-value';
+                    valueNode.textContent = value;
+
+                    line.appendChild(labelNode);
+                    line.appendChild(valueNode);
+                    return line;
+                })
+            );
+        }
+
+        updatePopupState() {
+            Object.entries(this.presetButtons).forEach(([presetKey, button]) => {
+                button.classList.toggle('hdw-active', presetKey === this.preset);
+            });
+
+            if (this.advancedModeInput) {
+                this.advancedModeInput.checked = this.advancedMode;
+            }
+
+            if (this.controlsNode) {
+                this.controlsNode.hidden = !this.advancedMode;
+            }
+
+            Object.keys(COMPRESSOR_PARAMETER_SCHEMA).forEach((key) => {
+                this.updateParameterControlValue(key);
+            });
+
+            this.renderMeterSummary();
+
+            if (this.statusNode) {
+                const snapshot = this.getStatusSnapshot();
+                this.statusNode.textContent = snapshot.text;
+                this.statusNode.classList.toggle('hdw-warning', snapshot.tone === 'warning');
+                this.statusNode.classList.toggle('hdw-error', snapshot.tone === 'error');
+            }
+
+            if (this.toggleButton) {
+                this.toggleButton.classList.toggle('hdw-active', this.enabled);
+                this.toggleButton.textContent = this.enabled
+                    ? 'Выключить компрессор'
+                    : 'Включить компрессор';
+                this.toggleButton.title = this.enabled
+                    ? 'Выключить аудио компрессор'
+                    : 'Включить аудио компрессор';
+            }
         }
 
         ensureVideoObserver() {
@@ -1708,8 +3382,21 @@
         }
 
         ensureForCurrentVideo() {
+            if (this.isFeatureUnsupported()) {
+                this.setAvailability('unsupported', 'Браузер не поддерживает AudioContext, GainNode или DynamicsCompressorNode.');
+                this.updateButtonState();
+                return;
+            }
+
             const video = this.getCurrentVideoElement();
-            if (!video || video === this.currentVideo) {
+            if (!video) {
+                this.currentVideo = null;
+                this.setAvailability('no-video', 'Видео еще не найдено. Настройки будут применены после загрузки плеера.');
+                this.updateButtonState();
+                return;
+            }
+
+            if (video === this.currentVideo) {
                 return;
             }
 
@@ -1717,11 +3404,18 @@
             this.bindVideoEvents(video);
             const state = this.getOrCreateState(video);
             if (!state) {
-                this.updateButtonState('Компрессор недоступен для этого видео');
+                if (this.availability.kind !== 'error') {
+                    this.setAvailability('error', 'Компрессор недоступен для этого видео.');
+                }
+                this.updateButtonState();
                 return;
             }
 
+            this.setAvailability('ready', '');
             this.applyState(state, this.enabled, false);
+            if (this.enabled && state.ctx.state === 'suspended') {
+                this.setAvailability('blocked', 'Нужен user gesture: клик по плееру или повторное включение компрессора.');
+            }
             this.updateButtonState();
         }
 
@@ -1732,13 +3426,19 @@
                 prevVideo.removeEventListener('canplay', handler);
             }
 
-            const handler = () => {
+            const handler = async () => {
                 const state = this.getOrCreateState(video);
                 if (!state || !this.enabled) {
                     return;
                 }
                 this.applyState(state, true, false);
-                this.tryResumeAudioContext(state.ctx, false);
+                const resumed = await this.tryResumeAudioContext(state.ctx, false);
+                if (!resumed) {
+                    this.setAvailability('blocked', 'Браузер пока не разрешил запуск AudioContext без user gesture.');
+                } else {
+                    this.setAvailability('ready', '');
+                }
+                this.updateButtonState();
             };
 
             video.addEventListener('play', handler);
@@ -1752,29 +3452,116 @@
             }
 
             const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
-            if (!AudioContextCtor || typeof DynamicsCompressorNode === 'undefined') {
+            if (!AudioContextCtor || typeof DynamicsCompressorNode === 'undefined' || typeof GainNode === 'undefined') {
+                this.setAvailability('unsupported', 'Браузер не поддерживает AudioContext, GainNode или DynamicsCompressorNode.');
                 return null;
             }
 
             try {
                 const ctx = new AudioContextCtor();
                 const source = new MediaElementAudioSourceNode(ctx, { mediaElement: video });
-                const compressor = new DynamicsCompressorNode(ctx, {
-                    threshold: -50,
-                    knee: 40,
-                    ratio: 12,
-                    attack: 0,
-                    release: 0.25
-                });
+                const compressor = new DynamicsCompressorNode(ctx);
+                const outputGain = new GainNode(ctx, { gain: this.settings.outputGain });
 
                 source.connect(ctx.destination);
-                const state = { ctx, source, compressor, isActive: false };
+                const state = { ctx, source, compressor, outputGain, isActive: false };
+                this.applySettingsToState(state, this.settings);
                 this.states.set(video, state);
+                this.setAvailability('ready', '');
                 return state;
             } catch (error) {
                 debugLog('[AudioCompressor] Ошибка инициализации:', error);
+                const details = error && typeof error.message === 'string' && error.message
+                    ? ` ${error.message}`
+                    : '';
+                this.setAvailability('error', `Не удалось инициализировать аудиообработку для этого видео.${details}`.trim());
                 return null;
             }
+        }
+
+        applySettingsToState(state, settings) {
+            if (!state || !state.compressor) {
+                return;
+            }
+
+            const normalizedSettings = normalizeCompressorSettings(settings);
+            Object.entries(normalizedSettings).forEach(([key, value]) => {
+                if (key === 'outputGain') {
+                    if (state.outputGain?.gain && typeof state.outputGain.gain.value === 'number') {
+                        state.outputGain.gain.value = value;
+                    }
+                    return;
+                }
+
+                const param = state.compressor[key];
+                if (param && typeof param.value === 'number') {
+                    param.value = value;
+                }
+            });
+        }
+
+        getEffectiveCompressorSettings() {
+            return normalizeCompressorSettings(this.settings);
+        }
+
+        saveCompressorState(nextSettings, nextPreset) {
+            this.settings = normalizeCompressorSettings(nextSettings);
+            this.preset = normalizeCompressorPreset(nextPreset);
+            GM_setValue(this.settingsStorageKey, {
+                preset: this.preset,
+                advancedMode: this.advancedMode,
+                settings: this.settings
+            });
+            this.statusMessage = '';
+            this.statusTone = 'neutral';
+        }
+
+        setAdvancedMode(enabled) {
+            this.advancedMode = !!enabled;
+            this.saveCompressorState(this.settings, this.preset);
+            this.updateButtonState();
+        }
+
+        updateSettings(partialSettings, source = 'manual') {
+            const nextSettings = { ...this.settings, ...partialSettings };
+            const nextPreset = source === 'manual' ? 'custom' : this.preset;
+            this.saveCompressorState(nextSettings, nextPreset);
+
+            if (this.currentVideo) {
+                const state = this.getOrCreateState(this.currentVideo);
+                this.applySettingsToState(state, this.getEffectiveCompressorSettings());
+            }
+
+            this.updateButtonState();
+        }
+
+        applyPreset(presetKey) {
+            const preset = COMPRESSOR_PRESETS[presetKey];
+            if (!preset) {
+                return;
+            }
+
+            if (presetKey === 'custom') {
+                this.preset = 'custom';
+                this.updateButtonState();
+                return;
+            }
+
+            this.saveCompressorState(preset.settings, presetKey);
+            if (this.currentVideo) {
+                const state = this.getOrCreateState(this.currentVideo);
+                this.applySettingsToState(state, this.getEffectiveCompressorSettings());
+            }
+            this.updateButtonState();
+        }
+
+        resetSettings() {
+            this.saveCompressorState(getDefaultCompressorSettings(), DEFAULT_COMPRESSOR_PRESET);
+            if (this.currentVideo) {
+                const state = this.getOrCreateState(this.currentVideo);
+                this.applySettingsToState(state, this.getEffectiveCompressorSettings());
+            }
+            this.updateButtonState();
         }
 
         disconnectSafe(node, target) {
@@ -1795,18 +3582,25 @@
                     this.disconnectSafe(state.source, state.ctx.destination);
                     this.disconnectSafe(state.source, state.compressor);
                     this.disconnectSafe(state.compressor, state.ctx.destination);
+                    this.disconnectSafe(state.compressor, state.outputGain);
+                    this.disconnectSafe(state.outputGain, state.ctx.destination);
                     state.source.connect(state.compressor);
-                    state.compressor.connect(state.ctx.destination);
+                    state.compressor.connect(state.outputGain);
+                    state.outputGain.connect(state.ctx.destination);
                     state.isActive = true;
                 }
-                this.tryResumeAudioContext(state.ctx, fromUserGesture);
+                return state.ctx.state === 'running';
             } else if (state.isActive) {
                 this.disconnectSafe(state.source, state.compressor);
                 this.disconnectSafe(state.compressor, state.ctx.destination);
+                this.disconnectSafe(state.compressor, state.outputGain);
+                this.disconnectSafe(state.outputGain, state.ctx.destination);
                 this.disconnectSafe(state.source, state.ctx.destination);
                 state.source.connect(state.ctx.destination);
                 state.isActive = false;
             }
+
+            return true;
         }
 
         async tryResumeAudioContext(ctx, fromUserGesture) {
@@ -1830,15 +3624,32 @@
         async setEnabled(enabled, fromUserGesture) {
             this.enabled = !!enabled;
             GM_setValue(this.storageKey, this.enabled);
+            this.statusMessage = '';
+            this.statusTone = 'neutral';
 
             this.ensureForCurrentVideo();
             const state = this.currentVideo ? this.getOrCreateState(this.currentVideo) : null;
             if (state) {
                 this.applyState(state, this.enabled, fromUserGesture);
-                if (this.enabled && state.ctx.state === 'suspended' && !fromUserGesture) {
-                    this.updateButtonState('Требуется клик по плееру/кнопке');
-                    return;
+                if (this.enabled) {
+                    const resumed = await this.tryResumeAudioContext(state.ctx, fromUserGesture);
+                    if (!resumed) {
+                        this.setAvailability(
+                            'blocked',
+                            fromUserGesture
+                                ? 'Браузер не разрешил запустить AudioContext даже после user gesture.'
+                                : 'Требуется клик по плееру или повторное включение компрессора.'
+                        );
+                        this.updateButtonState();
+                        return;
+                    }
+
+                    this.setAvailability('ready', '');
+                } else if (!this.enabled) {
+                    this.setAvailability('ready', '');
                 }
+            } else if (this.enabled && this.availability.kind === 'idle') {
+                this.setAvailability('no-video', 'Видео еще не найдено. Компрессор применится после загрузки плеера.');
             }
 
             this.updateButtonState();
@@ -1849,11 +3660,18 @@
         }
 
         buildButtonTitle(extraStatus = '') {
-            const suffix = extraStatus ? ` - ${extraStatus}` : '';
+            const statusSnapshot = this.getStatusSnapshot();
+            const suffix = extraStatus
+                ? ` - ${extraStatus}`
+                : (statusSnapshot.text ? ` - ${statusSnapshot.text}` : '');
             return `Аудио компрессор: ${this.enabled ? 'Вкл' : 'Выкл'}${suffix} (${HOTKEYS.compressor.label})`;
         }
 
         updateButtonState(extraStatus = '') {
+            if (extraStatus) {
+                this.statusMessage = extraStatus;
+                this.statusTone = 'neutral';
+            }
             const button = document.getElementById('audio-compressor-toggle-btn');
             if (!button) {
                 return;
@@ -1861,6 +3679,7 @@
 
             button.classList.toggle('hdw-active', this.enabled);
             button.title = this.buildButtonTitle(extraStatus);
+            this.updatePopupState();
         }
     }
 
@@ -2004,6 +3823,9 @@
             this.fullscreenHandler = null;
             this.visibilityHandler = null;
             this.initialized = false;
+            this.statusNode = null;
+            this.toggleButton = null;
+            this.settingButtons = {};
         }
 
         getDefaultDisplaySettings() {
@@ -2041,6 +3863,7 @@
             this.displaySettings[settingKey] = !!enabled;
             this.saveDisplaySettings();
             this.updateOverlay();
+            this.updatePopupState();
         }
 
         init() {
@@ -2115,7 +3938,6 @@
             button.id = 'playback-info-overlay-toggle-btn';
             button.type = 'button';
             button.title = this.buildButtonTitle();
-            button.addEventListener('click', () => this.toggle());
 
             const wrapper = document.createElement('div');
             wrapper.className = 'hdw-overlay-toggle-wrap';
@@ -2123,7 +3945,7 @@
             const settingsPopup = this.createSettingsPopup();
             wrapper.appendChild(settingsPopup);
             wrapper.appendChild(button);
-            bindPopupHoverPersistence(wrapper, settingsPopup);
+            bindPopupClickToggle(wrapper, button, settingsPopup);
 
             panelButtons.insertBefore(wrapper, panelButtons.firstChild);
         }
@@ -2132,35 +3954,85 @@
             const popup = document.createElement('div');
             popup.id = 'hdw-overlay-settings-popup';
 
+            const header = document.createElement('div');
+            header.className = 'hdw-overlay-settings-header';
+
             const title = document.createElement('span');
             title.className = 'hdw-overlay-settings-title';
             title.textContent = 'Показывать в оверлее';
-            popup.appendChild(title);
+            header.appendChild(title);
 
-            popup.appendChild(this.createSettingsToggle('showTitle', 'Название тайтла'));
-            popup.appendChild(this.createSettingsToggle('showSeasonEpisode', 'Сезон и серия'));
-            popup.appendChild(this.createSettingsToggle('showProgress', 'Прогресс просмотра'));
+            const currentStatus = document.createElement('div');
+            currentStatus.className = 'hdw-overlay-settings-current';
+            header.appendChild(currentStatus);
+            this.statusNode = currentStatus;
+            popup.appendChild(header);
 
+            const settingsList = document.createElement('div');
+            settingsList.className = 'hdw-overlay-settings-list';
+            popup.appendChild(settingsList);
+
+            settingsList.appendChild(this.createSettingsToggle(
+                'showTitle',
+                'Название тайтла',
+                'Показывать имя фильма или сериала поверх видео'
+            ));
+            settingsList.appendChild(this.createSettingsToggle(
+                'showSeasonEpisode',
+                'Сезон и серия',
+                'Добавлять текущий сезон и номер серии'
+            ));
+            settingsList.appendChild(this.createSettingsToggle(
+                'showProgress',
+                'Прогресс просмотра',
+                'Показывать текущее время и длительность'
+            ));
+
+            const footer = document.createElement('div');
+            footer.className = 'hdw-overlay-settings-footer';
+
+            const toggleButton = document.createElement('button');
+            toggleButton.type = 'button';
+            toggleButton.className = 'hdw-overlay-settings-toggle-btn';
+            toggleButton.addEventListener('click', () => {
+                this.toggle();
+            });
+            footer.appendChild(toggleButton);
+            popup.appendChild(footer);
+            this.toggleButton = toggleButton;
+
+            this.updatePopupState();
             return popup;
         }
 
-        createSettingsToggle(settingKey, labelText) {
-            const label = document.createElement('label');
-            label.className = 'hdw-overlay-settings-item';
-
-            const input = document.createElement('input');
-            input.type = 'checkbox';
-            input.checked = !!this.displaySettings[settingKey];
-            input.addEventListener('change', () => {
-                this.updateDisplaySetting(settingKey, input.checked);
+        createSettingsToggle(settingKey, labelText, hintText) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'hdw-overlay-settings-item';
+            button.addEventListener('click', () => {
+                const nextValue = !this.displaySettings[settingKey];
+                this.updateDisplaySetting(settingKey, nextValue);
             });
 
-            const text = document.createElement('span');
-            text.textContent = labelText;
+            const labelContent = document.createElement('span');
+            labelContent.className = 'hdw-overlay-settings-label';
 
-            label.appendChild(input);
-            label.appendChild(text);
-            return label;
+            const name = document.createElement('span');
+            name.className = 'hdw-overlay-settings-name';
+            name.textContent = labelText;
+            labelContent.appendChild(name);
+
+            if (hintText) {
+                const hintTrigger = document.createElement('span');
+                hintTrigger.className = 'hdw-overlay-settings-hint-trigger';
+                hintTrigger.dataset.hint = hintText;
+                hintTrigger.tabIndex = 0;
+                labelContent.appendChild(hintTrigger);
+            }
+
+            button.appendChild(labelContent);
+            this.settingButtons[settingKey] = button;
+            return button;
         }
 
         startVideoScan() {
@@ -2441,11 +4313,38 @@
         updateButtonState() {
             const button = document.getElementById('playback-info-overlay-toggle-btn');
             if (!button) {
+                this.updatePopupState();
                 return;
             }
 
             button.classList.toggle('hdw-active', this.enabled);
             button.title = this.buildButtonTitle();
+            this.updatePopupState();
+        }
+
+        updatePopupState() {
+            if (this.statusNode) {
+                this.statusNode.textContent = this.enabled
+                    ? 'Сейчас: оверлей включен'
+                    : 'Сейчас: оверлей выключен';
+            }
+
+            Object.entries(this.settingButtons).forEach(([settingKey, button]) => {
+                const isActive = !!this.displaySettings[settingKey];
+                button.classList.toggle('hdw-active', isActive);
+                button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+                button.title = '';
+            });
+
+            if (this.toggleButton) {
+                this.toggleButton.classList.toggle('hdw-active', this.enabled);
+                this.toggleButton.textContent = this.enabled
+                    ? 'Выключить оверлей'
+                    : 'Включить оверлей';
+                this.toggleButton.title = this.enabled
+                    ? 'Выключить информационный оверлей'
+                    : 'Включить информационный оверлей';
+            }
         }
     }
 
@@ -2635,7 +4534,11 @@
             this.playbackInfoOverlay = playbackInfoOverlay;
             this.translatorsPanel = translatorsPanel;
             this.isActive = false;
-            this.aspectRatioMode = this.normalizeAspectRatioMode(GM_getValue(config.aspectRatioStorageKey, '16:9'));
+            const storedAspectRatioMode = GM_getValue(config.aspectRatioStorageKey, '16:9');
+            this.aspectRatioMode = this.normalizeAspectRatioMode(storedAspectRatioMode);
+            if (storedAspectRatioMode !== this.aspectRatioMode) {
+                GM_setValue(config.aspectRatioStorageKey, this.aspectRatioMode);
+            }
             this.resizeHandler = null;
             this.mutationObservers = [];
             this.layoutRaf = null;
@@ -2735,6 +4638,7 @@
             button.id = 'theater-mode-toggle-btn';
             button.type = 'button';
             button.addEventListener('click', () => this.toggleTheaterMode());
+            markPanelControlGroup(button, 'secondary', { isGroupStart: true });
 
             panelButtons.appendChild(button);
         }
@@ -2756,21 +4660,27 @@
 
             const wrapper = document.createElement('div');
             wrapper.className = 'hdw-aspect-ratio-wrap';
+            markPanelControlGroup(wrapper, 'secondary');
 
             const popup = this.createAspectRatioPopup();
             wrapper.appendChild(popup);
             wrapper.appendChild(button);
-            bindPopupHoverPersistence(wrapper, popup);
+            bindPopupClickToggle(wrapper, button, popup);
 
             panelButtons.appendChild(wrapper);
         }
 
         normalizeAspectRatioMode(value) {
-            return value === '21:9' ? '21:9' : '16:9';
+            if (value === '21:9') {
+                return '12:5';
+            }
+
+            return ASPECT_RATIO_OPTIONS.some((option) => option.value === value) ? value : '16:9';
         }
 
         getAspectRatioCssValue() {
-            return this.aspectRatioMode === '21:9' ? '21 / 9' : '16 / 9';
+            const option = ASPECT_RATIO_OPTIONS.find((item) => item.value === this.aspectRatioMode);
+            return option ? option.cssValue : '16 / 9';
         }
 
         applyAspectRatioCssVar() {
@@ -2803,20 +4713,24 @@
 
             const options = document.createElement('div');
             options.className = 'hdw-aspect-ratio-options';
-            options.appendChild(this.createAspectRatioOptionButton('16:9'));
-            options.appendChild(this.createAspectRatioOptionButton('21:9'));
+            ASPECT_RATIO_OPTIONS.forEach((option) => {
+                options.appendChild(this.createAspectRatioOptionButton(option.value, option.label));
+            });
             popup.appendChild(options);
 
             return popup;
         }
 
-        createAspectRatioOptionButton(mode) {
+        createAspectRatioOptionButton(mode, label) {
             const optionButton = document.createElement('button');
             optionButton.type = 'button';
             optionButton.className = 'hdw-aspect-ratio-option';
             optionButton.dataset.aspectMode = mode;
-            optionButton.textContent = mode;
-            optionButton.addEventListener('click', () => this.setAspectRatioMode(mode));
+            optionButton.textContent = label;
+            optionButton.addEventListener('click', () => {
+                this.setAspectRatioMode(mode);
+                optionButton.closest('.hdw-aspect-ratio-wrap')?.classList.remove('hdw-popup-open');
+            });
             return optionButton;
         }
 
@@ -3068,7 +4982,7 @@
     const translatorsPanel = new TranslatorsPanelModule();
 
     const playerEnhancements = new TheaterModeModule(
-        new AudioCompressorModule(config.compressorStorageKey),
+        new AudioCompressorModule(config.compressorStorageKey, config.compressorSettingsStorageKey),
         new VideoEffectsModule(),
         new PlaybackInfoOverlayModule(config.overlayStorageKey, config.overlayDisplayStorageKey),
         translatorsPanel
@@ -3093,10 +5007,15 @@
                         <span class="close-btn">&times;</span>
                     </div>
                     <div class="watchlist-stats">
-                        Всего закладок: <span id="watchlist-count">0</span>
+                        <span>Всего закладок: <span id="watchlist-count">0</span></span>
+                        <div id="watchlist-status-summary" class="watchlist-status-summary"></div>
                     </div>
                     <div class="watchlist-controls">
                         <input type="text" id="watchlist-filter" class="watchlist-filter" placeholder="Поиск по названию...">
+                        <select id="watchlist-status-filter" class="watchlist-status-filter">
+                            <option value="">Все статусы</option>
+                            ${LIST_STATE_OPTIONS.map((option) => `<option value="${escapeHtml(option.value)}">${escapeHtml(option.label)}</option>`).join('')}
+                        </select>
                         <button id="clear-all-btn" class="btn btn-danger">Очистить всё</button>
                     </div>
                     <div id="watchlist-items" style="overflow-y: auto; flex-grow: 1; padding: 0 25px 25px 25px;"></div>
@@ -3129,7 +5048,12 @@
             // Обработчик фильтрации
             const filterInput = modal.querySelector('#watchlist-filter');
             filterInput.addEventListener('input', () => {
-                this.renderItems(filterInput.value);
+                this.renderItems();
+            });
+
+            const statusFilter = modal.querySelector('#watchlist-status-filter');
+            statusFilter.addEventListener('change', () => {
+                this.renderItems();
             });
             
             // Сохраняем ссылку на модальное окно для обновления из других частей кода
@@ -3140,27 +5064,42 @@
             clearBtn.addEventListener('click', () => {
                 if (confirm('Вы уверены, что хотите удалить все закладки?')) {
                     StorageManager.clearAll();
-                    this.renderItems('');
+                    this.renderItems();
                 }
             });
             
             // Отображение закладок
-            this.renderItems('');
+            this.renderItems();
             
             modal.style.display = 'block';
         }
         
+        static getWatchlistFilters() {
+            const filterInput = document.getElementById('watchlist-filter');
+            const statusFilter = document.getElementById('watchlist-status-filter');
+            return {
+                searchText: (filterInput?.value || '').trim(),
+                listState: normalizeListState(statusFilter?.value || '', null)
+            };
+        }
+
         static renderItems(filter = '') {
             const itemsContainer = document.getElementById('watchlist-items');
             if (!itemsContainer) return;
             
             const items = BookmarkManager.getAll();
             let filteredItems = items;
+            const activeFilters = this.getWatchlistFilters();
+            const searchText = filter || activeFilters.searchText;
             
-            if (filter) {
+            if (searchText) {
                 filteredItems = items.filter(item => 
-                    item.title.toLowerCase().includes(filter.toLowerCase())
+                    item.title.toLowerCase().includes(searchText.toLowerCase())
                 );
+            }
+
+            if (activeFilters.listState) {
+                filteredItems = filteredItems.filter((item) => getEffectiveListState(item) === activeFilters.listState);
             }
             
             // Обновление счетчика
@@ -3168,13 +5107,15 @@
             if (countElement) {
                 countElement.textContent = items.length;
             }
+            this.renderWatchlistStatusSummary(items);
             
             if (filteredItems.length === 0) {
+                const hasActiveFilters = !!searchText || !!activeFilters.listState;
                 itemsContainer.innerHTML = `
                     <div class="no-bookmarks">
                         <span class="no-bookmarks-icon">📚</span>
-                        <p>Закладок пока нет</p>
-                        <p>Добавьте фильмы или сериалы в закладки, чтобы они появились здесь</p>
+                        <p>${hasActiveFilters ? 'Ничего не найдено' : 'Закладок пока нет'}</p>
+                        <p>${hasActiveFilters ? 'Попробуйте изменить поиск или фильтр по статусу' : 'Добавьте фильмы или сериалы в закладки, чтобы они появились здесь'}</p>
                     </div>
                 `;
                 return;
@@ -3192,6 +5133,8 @@
                const seasonName = item.season && item.season.name ? escapeHtml(item.season.name) : '';
                const episodeName = item.episode && item.episode.name ? escapeHtml(item.episode.name) : '';
                const safeId = escapeHtml(item.id || '');
+               const currentListState = getEffectiveListState(item);
+               const listStateLabel = escapeHtml(getListStateLabel(currentListState));
                 
                return `
                 <div class="watchlist-item">
@@ -3201,6 +5144,7 @@
                             <div class="watchlist-description">${shortDescription}</div>
                             <div class="watchlist-meta">
                                 Добавлено: ${addedAt}
+                                | Статус: ${listStateLabel}
                                 ${year ? ` | Год: ${year}` : ''}
                                 ${item.dub && item.dub.id ? ` | Озвучка: ${dubName}` : ''}
                                 ${item.season && item.season.id ? ` | Сезон: ${seasonName}` : ''}
@@ -3210,12 +5154,41 @@
                         </div>
                         <div class="watchlist-actions">
                             <div class="watchlist-item-actions">
+                                <div class="watchlist-status-actions">
+                                    ${LIST_STATE_OPTIONS.map((option) => `
+                                        <button
+                                            type="button"
+                                            data-id="${safeId}"
+                                            data-list-state="${escapeHtml(option.value)}"
+                                            class="watchlist-status-btn${currentListState === option.value ? ' hdw-active' : ''}"
+                                        >${escapeHtml(option.icon)} ${escapeHtml(option.label)}</button>
+                                    `).join('')}
+                                </div>
                                 <button data-id="${safeId}" class="btn btn-danger remove-btn">🗑️ Удалить</button>
                             </div>
                         </div>
                     </div>
                 </div>
             `}).join('');
+
+            document.querySelectorAll('.watchlist-status-btn').forEach((btn) => {
+                btn.addEventListener('click', (e) => {
+                    const id = e.currentTarget.getAttribute('data-id');
+                    const nextListState = e.currentTarget.getAttribute('data-list-state');
+                    const targetItem = BookmarkManager.getAll().find((item) => item.id === id);
+                    if (!targetItem || getEffectiveListState(targetItem) === nextListState) {
+                        return;
+                    }
+
+                    BookmarkManager.setListState(targetItem.url, nextListState, targetItem);
+                    this.renderItems();
+
+                    if (normalizeUrl(window.location.href) === normalizeUrl(targetItem.url)) {
+                        this.refreshCurrentPageBookmarkControls();
+                        this.syncCurrentPageProgressInfo();
+                    }
+                });
+            });
             
             // Добавляем обработчики событий для кнопок удаления
             document.querySelectorAll('.remove-btn').forEach(btn => {
@@ -3230,27 +5203,41 @@
                     debugLog('[UI] Закладка перед удалением:', currentItemBeforeRemove);
                     
                     BookmarkManager.remove(id);
-                    this.renderItems(document.getElementById('watchlist-filter').value);
+                    this.renderItems();
                     
                     // Проверяем, если удаленная закладка соответствует текущей странице
                     debugLog('[UI] Проверка соответствия URL страницы и закладки');
                     if (currentItemBeforeRemove && normalizeUrl(window.location.href) === normalizeUrl(currentItemBeforeRemove.url)) {
                         debugLog('[UI] URL совпадают, обновляем кнопку');
-                        // Обновляем состояние кнопки на странице
-                        const bookmarkBtn = document.getElementById('add-to-watchlist-btn');
-                        debugLog('[UI] Кнопка найдена:', bookmarkBtn);
-                        if (bookmarkBtn) {
-                            bookmarkBtn.textContent = 'Добавить в закладки';
-                            bookmarkBtn.className = 'btn btn-success';
-                            debugLog('[UI] Состояние кнопки обновлено');
-                        } else {
-                            debugLog('[UI] Кнопка не найдена на странице');
-                        }
+                        this.refreshCurrentPageBookmarkControls();
+                        this.syncCurrentPageProgressInfo();
+                        debugLog('[UI] Состояние кнопок страницы и панели обновлено');
                     } else {
                         debugLog('[UI] URL не совпадают или закладка не найдена');
                     }
                 });
             });
+        }
+
+        static renderWatchlistStatusSummary(items) {
+            const summaryElement = document.getElementById('watchlist-status-summary');
+            if (!summaryElement) {
+                return;
+            }
+
+            const counts = LIST_STATE_OPTIONS.map((option) => ({
+                option,
+                count: items.filter((item) => getEffectiveListState(item) === option.value).length
+            })).filter((entry) => entry.count > 0);
+
+            if (counts.length === 0) {
+                summaryElement.innerHTML = '';
+                return;
+            }
+
+            summaryElement.innerHTML = counts.map(({ option, count }) => `
+                <span class="watchlist-status-badge">${escapeHtml(option.icon)} ${escapeHtml(option.label)}: ${count}</span>
+            `).join('');
         }
         
         static refreshItems() {
@@ -3340,6 +5327,203 @@
         static toggleAudioCompressor(fromUserGesture = false) {
             playerEnhancements.toggleAudioCompressor(fromUserGesture);
         }
+
+        static buildBookmarkButtonState(listState) {
+            const option = getListStateOption(listState);
+            if (!option) {
+                return {
+                    html: '<span class="hdw-page-bookmark-prefix">Мой список</span><span class="hdw-page-bookmark-value">Выбрать статус</span>',
+                    title: 'Выбрать статус тайтла в списке',
+                    className: ''
+                };
+            }
+
+            return {
+                html: `<span class="hdw-page-bookmark-prefix">Мой список</span><span class="hdw-page-bookmark-value">${escapeHtml(option.label)}</span>`,
+                title: `Статус в списке: ${option.label}`,
+                className: 'hdw-active'
+            };
+        }
+
+        static updateBookmarkButton(button, listState) {
+            if (!button) {
+                return;
+            }
+
+            if (button.id === 'player-watchlist-status-btn') {
+                const option = getListStateOption(listState);
+                button.classList.toggle('hdw-active', !!option);
+                button.title = option
+                    ? `Статус в списке: ${option.label}`
+                    : 'Выбрать статус тайтла';
+                button.dataset.listState = listState || '';
+                button.setAttribute('aria-label', button.title);
+                return;
+            }
+
+            const state = this.buildBookmarkButtonState(listState);
+            button.className = state.className || '';
+            button.innerHTML = state.html;
+            button.title = state.title;
+            button.dataset.listState = listState || '';
+            button.setAttribute('aria-label', state.title);
+        }
+
+        static getCurrentPageBookmarkData() {
+            const movieInfo = MovieParser.parseMovieInfo();
+            const existingItem = BookmarkManager.findByUrl(movieInfo.url);
+            return {
+                ...movieInfo,
+                id: existingItem?.id || movieInfo.id || MovieParser.generateId(),
+                listState: existingItem?.listState || BookmarkManager.getListState(movieInfo.url) || LIST_STATES.favorite
+            };
+        }
+
+        static refreshCurrentPageBookmarkControls() {
+            const currentListState = BookmarkManager.getListState(window.location.href);
+            this.updateBookmarkButton(document.getElementById('add-to-watchlist-btn'), currentListState);
+            this.updateBookmarkButton(document.getElementById('player-watchlist-status-btn'), currentListState);
+        }
+
+        static syncCurrentPageProgressInfo() {
+            const contentMain = document.querySelector('.b-content__main');
+            const existingProgress = contentMain?.querySelector('[data-hdw-progress-info="true"]');
+            const currentItem = BookmarkManager.findByUrl(window.location.href);
+
+            if (!currentItem || !currentItem.progress) {
+                existingProgress?.remove();
+                return;
+            }
+
+            this.addProgressInfo(currentItem);
+        }
+
+        static createWatchlistStatusPopup(button, getItemData, options = {}) {
+            const popupClassName = options.popupClassName || 'hdw-watchlist-status-popup';
+            const wrapper = document.createElement('div');
+            wrapper.className = 'hdw-watchlist-status-wrap';
+
+            const popup = document.createElement('div');
+            popup.className = popupClassName;
+
+            const header = document.createElement('div');
+            header.className = 'hdw-watchlist-status-header';
+
+            const title = document.createElement('div');
+            title.className = 'hdw-watchlist-status-title';
+            title.textContent = 'Статус в списке';
+
+            const currentStatus = document.createElement('div');
+            currentStatus.className = 'hdw-watchlist-status-current';
+
+            header.appendChild(title);
+            header.appendChild(currentStatus);
+            popup.appendChild(header);
+
+            const list = document.createElement('div');
+            list.className = 'hdw-watchlist-status-list';
+
+            const refreshPopupState = () => {
+                const currentState = BookmarkManager.getListState(window.location.href);
+                const currentOption = getListStateOption(currentState);
+                popup.querySelectorAll('.hdw-watchlist-status-item').forEach((itemButton) => {
+                    itemButton.classList.toggle('hdw-selected', itemButton.dataset.listState === currentState);
+                });
+                currentStatus.textContent = currentOption
+                    ? `Сейчас: ${currentOption.label}`
+                    : 'Сейчас: статус не выбран';
+                this.updateBookmarkButton(button, currentState);
+            };
+
+            LIST_STATE_OPTIONS.forEach((option) => {
+                const itemButton = document.createElement('button');
+                itemButton.type = 'button';
+                itemButton.className = 'hdw-watchlist-status-item';
+                itemButton.dataset.listState = option.value;
+                itemButton.innerHTML = `
+                    <span class="hdw-watchlist-status-icon">${escapeHtml(option.icon)}</span>
+                    <span class="hdw-watchlist-status-text">${escapeHtml(option.label)}</span>
+                `;
+                itemButton.addEventListener('click', () => {
+                    const currentState = BookmarkManager.getListState(window.location.href);
+                    if (currentState === option.value) {
+                        refreshPopupState();
+                        popupController.close();
+                        return;
+                    }
+
+                    const itemData = getItemData();
+                    const savedItem = BookmarkManager.setListState(itemData.url, option.value, itemData);
+                    if (savedItem) {
+                        this.addProgressInfo(savedItem);
+                    }
+                    refreshPopupState();
+                    this.refreshCurrentPageBookmarkControls();
+                    this.syncCurrentPageProgressInfo();
+                    this.refreshItems();
+                    popupController.close();
+                });
+                list.appendChild(itemButton);
+            });
+
+            popup.appendChild(list);
+
+            const actions = document.createElement('div');
+            actions.className = 'hdw-watchlist-status-actions';
+
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'hdw-watchlist-status-remove';
+            removeButton.textContent = 'Убрать из списка';
+            removeButton.addEventListener('click', () => {
+                const itemData = getItemData();
+                const existingItem = BookmarkManager.findByUrl(itemData.url);
+                if (!existingItem) {
+                    popupController.close();
+                    return;
+                }
+
+                BookmarkManager.remove(existingItem.id);
+                refreshPopupState();
+                this.refreshCurrentPageBookmarkControls();
+                this.syncCurrentPageProgressInfo();
+                this.refreshItems();
+                popupController.close();
+            });
+
+            actions.appendChild(removeButton);
+            popup.appendChild(actions);
+
+            wrapper.appendChild(popup);
+            wrapper.appendChild(button);
+
+            const popupController = bindPopupClickToggle(wrapper, button, popup);
+            refreshPopupState();
+            return wrapper;
+        }
+
+        static addPanelBookmarkBtn() {
+            if (document.getElementById('player-watchlist-status-btn')) {
+                return;
+            }
+
+            const panelButtons = ensurePlayerControlsPanel();
+            if (!panelButtons) {
+                return;
+            }
+
+            const button = document.createElement('button');
+            button.id = 'player-watchlist-status-btn';
+            button.type = 'button';
+
+            const bookmarkControl = this.createWatchlistStatusPopup(
+                button,
+                () => this.getCurrentPageBookmarkData()
+            );
+
+            panelButtons.insertBefore(bookmarkControl, panelButtons.firstChild);
+            this.refreshCurrentPageBookmarkControls();
+        }
         
         static addBookmarkBtn() {
             // Проверяем, есть ли уже кнопка
@@ -3347,149 +5531,40 @@
                 return;
             }
             
-            const movieInfo = MovieParser.parseMovieInfo();
+            const movieInfo = this.getCurrentPageBookmarkData();
             const existingItem = BookmarkManager.findByUrl(movieInfo.url);
-            const exists = !!existingItem;
-            // Используем ID существующего элемента, если он есть
-            if (exists) {
+            if (existingItem) {
                 movieInfo.id = existingItem.id;
             }
             
             const button = document.createElement('button');
             button.id = 'add-to-watchlist-btn';
-            button.className = 'btn ' + (exists ? 'btn-danger' : 'btn-success');
-            button.textContent = exists ? 'В закладках' : 'Добавить в закладки';
             button.style.cssText = `
-                margin: 0 0 10px 0;
                 padding: 12px 20px;
                 color: white;
                 line-height: normal;
             `;
-            
-            button.addEventListener('click', () => {
-                // Проверяем текущее состояние кнопки по тексту
-                const isCurrentlyAdded = button.textContent === 'В закладках';
-                if (isCurrentlyAdded) {
-                    // Удаляем из закладок
-                    BookmarkManager.remove(movieInfo.id);
-                    button.textContent = 'Добавить в закладки';
-                    button.className = 'btn btn-success';
-                } else {
-                    // Добавляем в закладки
-                    const freshMovieInfo = MovieParser.parseMovieInfo();
-                    const currentExisting = BookmarkManager.findByUrl(freshMovieInfo.url);
-                    if (currentExisting) {
-                        freshMovieInfo.id = currentExisting.id;
-                    }
-                    // Генерируем новый ID только для новых закладок
-                    const newItem = { ...freshMovieInfo, id: freshMovieInfo.id || MovieParser.generateId() };
-                    BookmarkManager.add(newItem);
-                    movieInfo.id = newItem.id;
-                    button.textContent = 'В закладках';
-                    button.className = 'btn btn-danger';
-                }
+
+            this.updateBookmarkButton(button, BookmarkManager.getListState(movieInfo.url));
+
+            const bookmarkControl = this.createWatchlistStatusPopup(button, () => {
+                const freshMovieInfo = this.getCurrentPageBookmarkData();
+                return {
+                    ...freshMovieInfo,
+                    id: freshMovieInfo.id || movieInfo.id
+                };
             });
-            
-            // Добавляем обработчик события для автоматического выбора озвучки
-            if (exists && existingItem.dub && existingItem.dub.id) {
-                // Создаем функцию для установки озвучки
-                const setDub = () => {
-                    // Проверяем, что элементы озвучки существуют
-                    const dubElements = document.querySelectorAll('.b-translator__item');
-                    if (dubElements.length > 0) {
-                        // Ищем элемент с нужным ID
-                        const targetDubElement = Array.from(dubElements).find(el =>
-                            el.getAttribute('data-translator_id') === existingItem.dub.id
-                        );
-                        
-                        if (targetDubElement) {
-                            // Эмулируем клик по элементу озвучки
-                            targetDubElement.click();
-                        }
-                    }
-                };
-                
-                // Добавляем обработчик события для кнопки "Открыть" в модальном окне
-                // чтобы автоматически устанавливать озвучку при переходе к закладке
-                button.addEventListener('click', () => {
-                    // Проверяем текущее состояние кнопки по тексту
-                    const isCurrentlyAdded = button.textContent === 'В закладках';
-                    if (!isCurrentlyAdded) {
-                        // Если добавляем в закладки, сохраняем текущую озвучку
-                        // Это будет сделано автоматически при парсинге movieInfo
-                        return;
-                    }
-                    
-                    // Если закладка уже существует, устанавливаем сохраненную озвучку
-                    // после небольшой задержки, чтобы страница успела загрузиться
-                    setTimeout(setDub, 1000);
-                });
-            }
-            
-            // Добавляем обработчик события для автоматического выбора сезона и серии
-            if (exists && existingItem.season && existingItem.season.id) {
-                // Создаем функцию для установки сезона
-                const setSeasonEpisode = () => {
-                    // Проверяем, что элементы сезона существуют
-                    const seasonElements = document.querySelectorAll('.b-simple_season__item');
-                    if (seasonElements.length > 0) {
-                        // Ищем элемент с нужным ID
-                        const targetSeasonElement = Array.from(seasonElements).find(el =>
-                            el.getAttribute('data-tab_id') === existingItem.season.id
-                        );
-                        
-                        if (targetSeasonElement) {
-                            // Эмулируем клик по элементу сезона
-                            targetSeasonElement.click();
-                        }
-                    }
-                    
-                    // После установки сезона устанавливаем серию
-                    if (existingItem.episode && existingItem.episode.id) {
-                        setTimeout(() => {
-                            // Проверяем, что элементы серии существуют
-                            const episodeElements = document.querySelectorAll('.b-simple_episode__item');
-                            if (episodeElements.length > 0) {
-                                // Ищем элемент с нужным ID
-                                const targetEpisodeElement = Array.from(episodeElements).find(el =>
-                                    el.getAttribute('data-episode_id') === existingItem.episode.id &&
-                                    el.getAttribute('data-season_id') === existingItem.episode.seasonId
-                                );
-                                
-                                if (targetEpisodeElement) {
-                                    // Эмулируем клик по элементу серии
-                                    targetEpisodeElement.click();
-                                }
-                            }
-                        }, 500); // Небольшая задержка, чтобы страница успела обновиться
-                    }
-                };
-                
-                // Добавляем обработчик события для кнопки "Открыть" в модальном окне
-                // чтобы автоматически устанавливать сезон и серию при переходе к закладке
-                button.addEventListener('click', () => {
-                    // Проверяем текущее состояние кнопки по тексту
-                    const isCurrentlyAdded = button.textContent === 'В закладках';
-                    if (!isCurrentlyAdded) {
-                        // Если добавляем в закладки, сохраняем текущий сезон и серию
-                        // Это будет сделано автоматически при парсинге movieInfo
-                        return;
-                    }
-                    
-                    // Если закладка уже существует, устанавливаем сохраненный сезон и серию
-                    // после небольшой задержки, чтобы страница успела загрузиться
-                    setTimeout(setSeasonEpisode, 1000);
-                });
-            }
             
             // Находим место для размещения кнопки (в зависимости от структуры страницы)
             const infoTableLeft = document.querySelector('.b-post__infotable_left');
             if (infoTableLeft) {
-                infoTableLeft.appendChild(button);
+                infoTableLeft.appendChild(bookmarkControl);
                 
                 // Добавляем отображение прогресса просмотра
                 this.addProgressInfo(existingItem);
             }
+
+            this.refreshCurrentPageBookmarkControls();
         }
         
         static addProgressInfo(item) {
@@ -3509,10 +5584,16 @@
             if (!lastEpisodeOut) {
                 return;
             }
+
+            const existingProgress = contentMain.querySelector('[data-hdw-progress-info="true"]');
+            if (existingProgress) {
+                existingProgress.remove();
+            }
             
             // Создаем элемент с информацией о прогрессе
             const progressDiv = document.createElement('div');
             progressDiv.className = 'b-post__lastbookmark';
+            progressDiv.dataset.hdwProgressInfo = 'true';
             progressDiv.style.marginTop = '1px';
 
             // Форматируем время
@@ -3795,6 +5876,7 @@
         if (window.location.pathname.includes('/films/') || window.location.pathname.includes('/series/') || window.location.pathname.includes('/cartoons/') || window.location.pathname.includes('/animation/') ) {
             UI.addBookmarkBtn();
             UI.initTheaterMode();
+            UI.addPanelBookmarkBtn();
             // Инициализируем отслеживание видео
             VideoTracker.init();
         }
@@ -3814,6 +5896,18 @@
     global.__HDREZKA_CORE_VERSION__ = HDREZKA_CORE_VERSION;
     global.__HDREZKA_CORE__ = runHdrezkaCore;
 })(typeof globalThis !== 'undefined' ? globalThis : window);
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
