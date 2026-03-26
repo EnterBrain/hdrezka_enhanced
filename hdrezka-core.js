@@ -827,20 +827,6 @@
             line-height: normal !important;
         }
 
-        #player-watchlist-status-btn::before {
-            content: '';
-            display: block;
-            width: 18px;
-            height: 16px;
-            margin: 11px auto 0;
-            background:
-                radial-gradient(circle at 30% 32%, transparent 5px, currentColor 5.5px 6.5px, transparent 7px),
-                radial-gradient(circle at 70% 32%, transparent 5px, currentColor 5.5px 6.5px, transparent 7px),
-                linear-gradient(135deg, transparent 42%, currentColor 43% 57%, transparent 58%) center 58% / 13px 13px no-repeat;
-            filter: drop-shadow(0 0 0 currentColor);
-            transform: translateX(-4px);
-        }
-
         #player-watchlist-status-btn::after {
             content: '';
             position: absolute;
@@ -991,20 +977,24 @@
             line-height: normal !important;
         }
 
-        #theater-mode-toggle-btn::after {
-            content: '';
+        .hdw-panel-button-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            pointer-events: none;
+        }
+
+        .hdw-panel-button-icon.hdw-offset-left {
+            transform: translateX(-4px);
+        }
+
+        .hdw-panel-button-icon svg {
             display: block;
-            width: 16px;
-            height: 16px;
-            background:
-                linear-gradient(currentColor, currentColor) left top / 6px 2px no-repeat,
-                linear-gradient(currentColor, currentColor) left top / 2px 6px no-repeat,
-                linear-gradient(currentColor, currentColor) right top / 6px 2px no-repeat,
-                linear-gradient(currentColor, currentColor) right top / 2px 6px no-repeat,
-                linear-gradient(currentColor, currentColor) left bottom / 6px 2px no-repeat,
-                linear-gradient(currentColor, currentColor) left bottom / 2px 6px no-repeat,
-                linear-gradient(currentColor, currentColor) right bottom / 6px 2px no-repeat,
-                linear-gradient(currentColor, currentColor) right bottom / 2px 6px no-repeat;
+            width: 18px;
+            height: 18px;
+            overflow: visible;
         }
 
         #theater-mode-toggle-btn:hover,
@@ -1148,19 +1138,6 @@
         .hdw-aspect-ratio-option.hdw-selected {
             border-color: var(--hdw-panel-item-active-border);
             background: var(--hdw-panel-item-active-bg);
-        }
-
-        #audio-compressor-toggle-btn::before {
-            content: '';
-            display: block;
-            width: 18px;
-            height: 16px;
-            margin: 11px auto 0;
-            background:
-                linear-gradient(currentColor, currentColor) 1px 8px / 2px 6px no-repeat,
-                linear-gradient(currentColor, currentColor) 5px 5px / 2px 12px no-repeat,
-                linear-gradient(currentColor, currentColor) 9px 2px / 2px 8px no-repeat,
-                linear-gradient(currentColor, currentColor) 13px 4px / 2px 14px no-repeat;
         }
 
         #audio-compressor-toggle-btn {
@@ -1550,50 +1527,6 @@
             border-color: var(--hdw-panel-item-hover-border);
             color: #fff;
             outline: none;
-        }
-
-        #video-blur-toggle-btn::before {
-            content: '';
-            display: block;
-            width: 16px;
-            height: 16px;
-            margin: 11px auto 0;
-            border-radius: 999px;
-            background:
-                radial-gradient(circle, currentColor 0 1.2px, transparent 1.3px) 0 0 / 5px 5px,
-                radial-gradient(circle, currentColor 0 1.2px, transparent 1.3px) 2.5px 2.5px / 5px 5px;
-            opacity: 0.95;
-        }
-
-        #video-mirror-toggle-btn::before {
-            content: '';
-            display: block;
-            width: 18px;
-            height: 14px;
-            margin: 12px auto 0;
-            background:
-                linear-gradient(currentColor, currentColor) center / 1px 14px no-repeat,
-                linear-gradient(currentColor, currentColor) 2px center / 6px 10px no-repeat,
-                linear-gradient(currentColor, currentColor) 10px center / 6px 10px no-repeat;
-            box-shadow: inset 0 0 0 1px transparent;
-        }
-
-        #playback-info-overlay-toggle-btn::before {
-            content: '';
-            display: block;
-            width: 18px;
-            height: 14px;
-            margin: 12px auto 0;
-            background:
-                linear-gradient(currentColor, currentColor) left top / 6px 2px no-repeat,
-                linear-gradient(currentColor, currentColor) left top / 2px 6px no-repeat,
-                linear-gradient(currentColor, currentColor) right top / 6px 2px no-repeat,
-                linear-gradient(currentColor, currentColor) right top / 2px 6px no-repeat,
-                linear-gradient(currentColor, currentColor) left bottom / 6px 2px no-repeat,
-                linear-gradient(currentColor, currentColor) left bottom / 2px 6px no-repeat,
-                linear-gradient(currentColor, currentColor) right bottom / 6px 2px no-repeat,
-                linear-gradient(currentColor, currentColor) right bottom / 2px 6px no-repeat,
-                linear-gradient(currentColor, currentColor) center / 8px 1.5px no-repeat;
         }
 
         #playback-info-overlay-toggle-btn {
@@ -2912,6 +2845,67 @@
 
     const popupClickControllers = new Set();
 
+    const PANEL_BUTTON_ICONS = Object.freeze({
+        watchlist: `
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M12 20.5 5.8 14.6a4.53 4.53 0 0 1 6.2-6.58A4.53 4.53 0 0 1 18.2 14.6L12 20.5Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        `,
+        theater: `
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M7 5H4v3M17 5h3v3M7 19H4v-3M17 19h3v-3" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M8.5 8.5h7v7h-7z" fill="none" stroke="currentColor" stroke-width="1.7" opacity=".85"/>
+            </svg>
+        `,
+        compressor: `
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M5 14v-4M9 17V7M13 15V9M17 18V6M21 13v-2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+            </svg>
+        `,
+        blur: `
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <circle cx="7" cy="7" r="1.3" fill="currentColor"/>
+                <circle cx="12" cy="7" r="1.1" fill="currentColor" opacity=".85"/>
+                <circle cx="17" cy="7" r="1.3" fill="currentColor"/>
+                <circle cx="7" cy="12" r="1.1" fill="currentColor" opacity=".8"/>
+                <circle cx="12" cy="12" r="1.6" fill="currentColor"/>
+                <circle cx="17" cy="12" r="1.1" fill="currentColor" opacity=".8"/>
+                <circle cx="7" cy="17" r="1.3" fill="currentColor"/>
+                <circle cx="12" cy="17" r="1.1" fill="currentColor" opacity=".85"/>
+                <circle cx="17" cy="17" r="1.3" fill="currentColor"/>
+            </svg>
+        `,
+        mirror: `
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M12 5v14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity=".9"/>
+                <path d="M9.5 7H6.5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h3" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M14.5 7h3a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-3" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        `,
+        overlay: `
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <rect x="5" y="6" width="14" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.9"/>
+                <path d="M8 10h4M8 13h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity=".95"/>
+            </svg>
+        `
+    });
+
+    function applyPanelButtonIcon(button, iconKey, options = {}) {
+        if (!button || !iconKey || !PANEL_BUTTON_ICONS[iconKey]) {
+            return;
+        }
+
+        button.querySelector('.hdw-panel-button-icon')?.remove();
+
+        const icon = document.createElement('span');
+        icon.className = 'hdw-panel-button-icon';
+        if (options.offsetLeft) {
+            icon.classList.add('hdw-offset-left');
+        }
+        icon.innerHTML = PANEL_BUTTON_ICONS[iconKey].trim();
+        button.appendChild(icon);
+    }
+
     function bindPopupClickToggle(wrapper, trigger, popup, options = {}) {
         if (!wrapper || !trigger || !popup) {
             return { open() {}, close() {}, isOpen() { return false; } };
@@ -3096,6 +3090,7 @@
             button.id = 'audio-compressor-toggle-btn';
             button.type = 'button';
             button.title = this.buildButtonTitle();
+            applyPanelButtonIcon(button, 'compressor');
 
             const wrapper = document.createElement('div');
             wrapper.className = 'hdw-compressor-wrap';
@@ -3715,6 +3710,7 @@
                 const mirrorButton = document.createElement('button');
                 mirrorButton.id = 'video-mirror-toggle-btn';
                 mirrorButton.type = 'button';
+                applyPanelButtonIcon(mirrorButton, 'mirror');
                 mirrorButton.addEventListener('click', () => this.toggleMirror());
                 panelButtons.insertBefore(mirrorButton, panelButtons.firstChild);
             }
@@ -3723,6 +3719,7 @@
                 const blurButton = document.createElement('button');
                 blurButton.id = 'video-blur-toggle-btn';
                 blurButton.type = 'button';
+                applyPanelButtonIcon(blurButton, 'blur');
                 blurButton.addEventListener('click', () => this.toggleBlur());
                 panelButtons.insertBefore(blurButton, panelButtons.firstChild);
             }
@@ -3938,6 +3935,7 @@
             button.id = 'playback-info-overlay-toggle-btn';
             button.type = 'button';
             button.title = this.buildButtonTitle();
+            applyPanelButtonIcon(button, 'overlay');
 
             const wrapper = document.createElement('div');
             wrapper.className = 'hdw-overlay-toggle-wrap';
@@ -4637,6 +4635,7 @@
             const button = document.createElement('button');
             button.id = 'theater-mode-toggle-btn';
             button.type = 'button';
+            applyPanelButtonIcon(button, 'theater');
             button.addEventListener('click', () => this.toggleTheaterMode());
             markPanelControlGroup(button, 'secondary', { isGroupStart: true });
 
@@ -5515,6 +5514,7 @@
             const button = document.createElement('button');
             button.id = 'player-watchlist-status-btn';
             button.type = 'button';
+            applyPanelButtonIcon(button, 'watchlist', { offsetLeft: true });
 
             const bookmarkControl = this.createWatchlistStatusPopup(
                 button,
