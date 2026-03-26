@@ -9,6 +9,7 @@ Prepared icons:
 - `watchlist_abandoned.svg`
 - `theater-mode.svg`
 - `audio-compressor.svg`
+- `trash.svg`
 - `video-blur.svg`
 - `video-mirror.svg`
 - `playback-overlay.svg`

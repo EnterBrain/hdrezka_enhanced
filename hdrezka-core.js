@@ -1,6 +1,6 @@
 (function (global) {
     'use strict';
-    const HDREZKA_CORE_VERSION = '2026.03.26.160833.093-3e33e4c'; // auto-updated by git hook
+    const HDREZKA_CORE_VERSION = '2026.03.26.205020.296-43e4bad'; // auto-updated by git hook
 
     function runHdrezkaCore() {
     'use strict';
@@ -214,35 +214,37 @@
     }
 
     function ensureCoreStyles() {
-        fetchCoreCssText()
+        return fetchCoreCssText()
             .then((cssText) => {
                 if (cssText) {
                     applyCoreStyles(cssText);
-                    return;
+                    return true;
                 }
 
                 const bundledCss = getBundledCoreCssText();
                 if (!bundledCss) {
                     console.warn('[HDRezka Core] CSS-ассет не загружен, встроенный fallback отсутствует.');
-                    return;
+                    return false;
                 }
 
                 console.warn('[HDRezka Core] Онлайн-загрузка CSS неуспешна, fallback на @resource.');
                 applyCoreStyles(bundledCss);
+                return true;
             })
             .catch(() => {
                 const bundledCss = getBundledCoreCssText();
                 if (!bundledCss) {
                     console.warn('[HDRezka Core] Ошибка загрузки CSS-ассета, встроенный fallback отсутствует.');
-                    return;
+                    return false;
                 }
 
                 console.warn('[HDRezka Core] Ошибка загрузки CSS-ассета, fallback на @resource.');
                 applyCoreStyles(bundledCss);
+                return true;
             });
     }
 
-    ensureCoreStyles();
+    const coreStylesReady = ensureCoreStyles();
 
     // Хранилище данных
     class StorageManager {
@@ -3386,10 +3388,12 @@
                                             data-id="${safeId}"
                                             data-list-state="${escapeHtml(option.value)}"
                                             class="watchlist-status-btn${currentListState === option.value ? ' hdw-active' : ''}"
-                                        >${buildSpriteIconMarkup(option.spriteIconId, 'hdw-inline-state-icon')}<span>${escapeHtml(option.label)}</span></button>
+                                        ><span>${escapeHtml(option.label)}</span></button>
                                     `).join('')}
+                                    <button data-id="${safeId}" class="btn btn-danger remove-btn">
+                                        <span>Удалить</span>
+                                    </button>
                                 </div>
-                                <button data-id="${safeId}" class="btn btn-danger remove-btn">🗑️ Удалить</button>
                             </div>
                         </div>
                     </div>
@@ -4070,7 +4074,9 @@
     }
     
     // Инициализация скрипта
-    function init() {
+    async function init() {
+        await coreStylesReady;
+
         // Добавляем кнопку управления закладками
         UI.addToggleBtn();
         
@@ -4086,9 +4092,11 @@
 
     // Запуск инициализации при загрузке страницы
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', () => {
+            void init();
+        });
     } else {
-        init();
+        void init();
     }
     // Тестирование функции отладки
     debugLog('[DEBUG] Скрипт инициализирован, debug =', config.debug);
@@ -4098,3 +4106,4 @@
     global.__HDREZKA_CORE_VERSION__ = HDREZKA_CORE_VERSION;
     global.__HDREZKA_CORE__ = runHdrezkaCore;
 })(typeof globalThis !== 'undefined' ? globalThis : window);
+
