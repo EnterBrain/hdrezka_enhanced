@@ -1,6 +1,6 @@
 (function (global) {
     'use strict';
-    const HDREZKA_CORE_VERSION = '2026.03.27.000132.132-40a81b0'; // auto-updated by git hook
+    const HDREZKA_CORE_VERSION = '2026.03.27.002038.899-c364460'; // auto-updated by git hook
 
     function runHdrezkaCore() {
     'use strict';
@@ -3013,6 +3013,8 @@
             this.mutationObserver = null;
             this.observerRaf = null;
             this.centerPopupRaf = null;
+            this.panelListSignature = '';
+            this.panelActiveKey = '';
         }
 
         init() {
@@ -3109,9 +3111,7 @@
                     this.observerRaf = null;
                     this.ensureListReference();
                     this.updateSelectedTranslatorName();
-                    this.rebuildPanelPopup();
                     this.syncPanelControlState();
-                    this.scheduleCenterActiveItemInPopup();
                 });
             });
 
@@ -3258,7 +3258,7 @@
                 shouldOpenOnTrigger: () => this.shouldShowPanelControl(),
                 onToggle: (opened) => {
                     if (opened) {
-                        this.scheduleCenterActiveItemInPopup();
+                        this.syncPanelControlState({ centerOnOpen: true });
                     }
                 }
             });
@@ -3305,6 +3305,15 @@
             this.getTranslatorItems().forEach((translatorItem) => {
                 this.panelListEl.appendChild(this.createPanelTranslatorButton(translatorItem));
             });
+            this.panelListSignature = this.getTranslatorItems()
+                .map((item) => getTranslatorOptionKey(item))
+                .join('|');
+        }
+
+        getTranslatorListSignature() {
+            return this.getTranslatorItems()
+                .map((item) => getTranslatorOptionKey(item))
+                .join('|');
         }
 
         createPanelTranslatorButton(sourceItem) {
@@ -3377,7 +3386,7 @@
             });
         }
 
-        syncPanelControlState() {
+        syncPanelControlState(options = {}) {
             if (!this.panelControlEl) {
                 return;
             }
@@ -3389,15 +3398,26 @@
                 return;
             }
 
-            if (!this.panelListEl || this.panelListEl.childElementCount !== this.getTranslatorCount()) {
+            const listSignature = this.getTranslatorListSignature();
+            const shouldRebuild = !this.panelListEl
+                || this.panelListEl.childElementCount !== this.getTranslatorCount()
+                || this.panelListSignature !== listSignature;
+            if (shouldRebuild) {
                 this.rebuildPanelPopup();
+            } else {
+                this.panelListSignature = listSignature;
             }
 
             const activeKey = getTranslatorOptionKey(findActiveTranslatorItem(this.blockEl));
+            const activeChanged = this.panelActiveKey !== activeKey;
+            this.panelActiveKey = activeKey;
             this.panelListEl?.querySelectorAll('.hdw-translators-panel-item').forEach((button) => {
                 button.classList.toggle('hdw-active', button.dataset.translatorKey === activeKey);
             });
-            this.scheduleCenterActiveItemInPopup();
+
+            if (options.centerOnOpen || activeChanged) {
+                this.scheduleCenterActiveItemInPopup();
+            }
         }
 
         setTheaterMode(active) {
@@ -3424,6 +3444,8 @@
             this.mutationObserver = null;
             this.observerRaf = null;
             this.centerPopupRaf = null;
+            this.panelListSignature = '';
+            this.panelActiveKey = '';
         }
 
         init() {
@@ -3477,9 +3499,7 @@
                     this.observerRaf = null;
                     this.ensureTabsReference();
                     this.updateSelectedSeasonName();
-                    this.rebuildPanelPopup();
                     this.syncPanelControlState();
-                    this.scheduleCenterActiveItemInPopup();
                 });
             });
 
@@ -3585,7 +3605,7 @@
                 shouldOpenOnTrigger: () => this.shouldShowPanelControl(),
                 onToggle: (opened) => {
                     if (opened) {
-                        this.scheduleCenterActiveItemInPopup();
+                        this.syncPanelControlState({ centerOnOpen: true });
                     }
                 }
             });
@@ -3632,6 +3652,15 @@
             this.getSeasonItems().forEach((seasonItem) => {
                 this.panelListEl.appendChild(this.createPanelSeasonButton(seasonItem));
             });
+            this.panelListSignature = this.getSeasonItems()
+                .map((item) => getSeasonOptionKey(item))
+                .join('|');
+        }
+
+        getSeasonListSignature() {
+            return this.getSeasonItems()
+                .map((item) => getSeasonOptionKey(item))
+                .join('|');
         }
 
         createPanelSeasonButton(sourceItem) {
@@ -3699,7 +3728,7 @@
             });
         }
 
-        syncPanelControlState() {
+        syncPanelControlState(options = {}) {
             if (!this.panelControlEl) {
                 return;
             }
@@ -3712,15 +3741,25 @@
                 return;
             }
 
-            if (!this.panelListEl || this.panelListEl.childElementCount !== this.getSeasonCount()) {
+            const listSignature = this.getSeasonListSignature();
+            const shouldRebuild = !this.panelListEl
+                || this.panelListEl.childElementCount !== this.getSeasonCount()
+                || this.panelListSignature !== listSignature;
+            if (shouldRebuild) {
                 this.rebuildPanelPopup();
+            } else {
+                this.panelListSignature = listSignature;
             }
 
             const activeKey = getSeasonOptionKey(findActiveSeasonItem(this.tabsEl || document));
+            const activeChanged = this.panelActiveKey !== activeKey;
+            this.panelActiveKey = activeKey;
             this.panelListEl?.querySelectorAll('.hdw-translators-panel-item').forEach((button) => {
                 button.classList.toggle('hdw-active', button.dataset.seasonKey === activeKey);
             });
-            this.scheduleCenterActiveItemInPopup();
+            if (options.centerOnOpen || activeChanged) {
+                this.scheduleCenterActiveItemInPopup();
+            }
         }
 
         setTheaterMode(active) {
@@ -3744,6 +3783,8 @@
             this.mutationObserver = null;
             this.observerRaf = null;
             this.centerEpisodeRaf = null;
+            this.panelListSignature = '';
+            this.panelActiveKey = '';
         }
 
         init() {
@@ -3797,9 +3838,7 @@
                     this.observerRaf = null;
                     this.ensureRootReference();
                     this.updateSelectedEpisodeName();
-                    this.rebuildPanelPopup();
                     this.syncPanelControlState();
-                    this.scheduleCenterActiveEpisodeInPopup();
                 });
             });
 
@@ -3911,7 +3950,7 @@
                 shouldOpenOnTrigger: () => this.shouldShowPanelControl(),
                 onToggle: (opened) => {
                     if (opened) {
-                        this.scheduleCenterActiveEpisodeInPopup();
+                        this.syncPanelControlState({ centerOnOpen: true });
                     }
                 }
             });
@@ -3958,6 +3997,15 @@
             this.getEpisodeItems().forEach((episodeItem) => {
                 this.panelListEl.appendChild(this.createPanelEpisodeButton(episodeItem));
             });
+            this.panelListSignature = this.getEpisodeItems()
+                .map((item) => getEpisodeOptionKey(item))
+                .join('|');
+        }
+
+        getEpisodeListSignature() {
+            return this.getEpisodeItems()
+                .map((item) => getEpisodeOptionKey(item))
+                .join('|');
         }
 
         createPanelEpisodeButton(sourceItem) {
@@ -4031,7 +4079,7 @@
             centerActivePanelListItem(this.panelListEl);
         }
 
-        syncPanelControlState() {
+        syncPanelControlState(options = {}) {
             if (!this.panelControlEl) {
                 return;
             }
@@ -4044,15 +4092,25 @@
                 return;
             }
 
-            if (!this.panelListEl || this.panelListEl.childElementCount !== this.getEpisodeCount()) {
+            const listSignature = this.getEpisodeListSignature();
+            const shouldRebuild = !this.panelListEl
+                || this.panelListEl.childElementCount !== this.getEpisodeCount()
+                || this.panelListSignature !== listSignature;
+            if (shouldRebuild) {
                 this.rebuildPanelPopup();
+            } else {
+                this.panelListSignature = listSignature;
             }
 
             const activeKey = getEpisodeOptionKey(findActiveEpisodeItem(this.rootEl || document));
+            const activeChanged = this.panelActiveKey !== activeKey;
+            this.panelActiveKey = activeKey;
             this.panelListEl?.querySelectorAll('.hdw-translators-panel-item').forEach((button) => {
                 button.classList.toggle('hdw-active', button.dataset.episodeKey === activeKey);
             });
-            this.scheduleCenterActiveEpisodeInPopup();
+            if (options.centerOnOpen || activeChanged) {
+                this.scheduleCenterActiveEpisodeInPopup();
+            }
         }
 
         setTheaterMode(active) {
@@ -5455,6 +5513,7 @@
     global.__HDREZKA_CORE_VERSION__ = HDREZKA_CORE_VERSION;
     global.__HDREZKA_CORE__ = runHdrezkaCore;
 })(typeof globalThis !== 'undefined' ? globalThis : window);
+
 
 
 
