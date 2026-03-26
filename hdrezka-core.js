@@ -1,6 +1,6 @@
 (function (global) {
     'use strict';
-    const HDREZKA_CORE_VERSION = '2026.03.26.205020.296-43e4bad'; // auto-updated by git hook
+    const HDREZKA_CORE_VERSION = '2026.03.26.212134.438-870cb67'; // auto-updated by git hook
 
     function runHdrezkaCore() {
     'use strict';
@@ -1030,7 +1030,8 @@
         compressor: 'hdw-icon-audio-compressor',
         blur: 'hdw-icon-video-blur',
         mirror: 'hdw-icon-video-mirror',
-        overlay: 'hdw-icon-playback-overlay'
+        overlay: 'hdw-icon-playback-overlay',
+        translator: 'hdw-icon-translator-audio'
     });
 
     let panelButtonSpriteLoadPromise = null;
@@ -2581,6 +2582,12 @@
             this.listEl = null;
             this.activeNameEl = null;
             this.toggleButtonEl = null;
+            this.panelControlEl = null;
+            this.panelButtonEl = null;
+            this.panelPopupEl = null;
+            this.panelCurrentEl = null;
+            this.panelListEl = null;
+            this.panelPopupController = null;
             this.isExpanded = false;
             this.isTheaterMode = false;
             this.mutationObserver = null;
@@ -2601,6 +2608,7 @@
 
             this.initialized = true;
             this.enhanceTitle();
+            this.ensurePanelControl();
             this.bindEvents();
             this.bindObserver();
             this.setExpanded(false);
@@ -2653,11 +2661,15 @@
             }
 
             this.blockEl.addEventListener('click', (event) => {
-                if (!event.target.closest('.b-translator__item')) {
+                const translatorItem = event.target.closest('.b-translator__item');
+                if (!translatorItem) {
                     return;
                 }
 
-                requestAnimationFrame(() => this.updateSelectedTranslatorName());
+                requestAnimationFrame(() => {
+                    this.updateSelectedTranslatorName();
+                    this.syncPanelControlState();
+                });
             });
         }
 
@@ -2675,12 +2687,16 @@
                     this.observerRaf = null;
                     this.ensureListReference();
                     this.updateSelectedTranslatorName();
+                    this.rebuildPanelPopup();
+                    this.syncPanelControlState();
                 });
             });
 
             this.mutationObserver.observe(this.blockEl, {
                 childList: true,
-                subtree: true
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['class', 'href', 'title']
             });
         }
 
@@ -2700,6 +2716,22 @@
             }
         }
 
+        getTranslatorItems() {
+            if (!this.listEl) {
+                return [];
+            }
+
+            return Array.from(this.listEl.querySelectorAll('.b-translator__item'));
+        }
+
+        getTranslatorCount() {
+            return this.getTranslatorItems().length;
+        }
+
+        shouldShowPanelControl() {
+            return this.isTheaterMode && this.getTranslatorCount() > 1;
+        }
+
         getActiveTranslatorName() {
             if (!this.blockEl) {
                 return 'Не выбрана';
@@ -2715,11 +2747,22 @@
         }
 
         updateSelectedTranslatorName() {
-            if (!this.activeNameEl) {
-                return;
+            const activeName = this.getActiveTranslatorName();
+            if (this.activeNameEl) {
+                this.activeNameEl.textContent = activeName;
             }
 
-            this.activeNameEl.textContent = this.getActiveTranslatorName();
+            if (this.panelButtonEl) {
+                const label = this.panelButtonEl.querySelector('.hdw-translators-button-label');
+                if (label) {
+                    label.textContent = activeName;
+                }
+                this.panelButtonEl.title = `Выбрать озвучку. Сейчас: ${activeName}`;
+            }
+
+            if (this.panelCurrentEl) {
+                this.panelCurrentEl.textContent = `Сейчас: ${activeName}`;
+            }
         }
 
         setExpanded(expanded) {
@@ -2744,11 +2787,141 @@
             this.setExpanded(!this.isExpanded);
         }
 
+        ensurePanelControl() {
+            if (this.panelControlEl) {
+                return;
+            }
+
+            const panelButtons = ensurePlayerControlsPanel();
+            if (!panelButtons) {
+                return;
+            }
+
+            const button = document.createElement('button');
+            button.id = 'player-translators-toggle-btn';
+            button.type = 'button';
+            button.className = 'hdw-panel-popup-text-trigger';
+            button.innerHTML = `${buildSpriteIconMarkup(PANEL_BUTTON_ICON_IDS.translator, 'hdw-translators-button-icon')}<span class="hdw-translators-button-label"></span>`;
+            ensurePanelButtonSpriteLoaded();
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'hdw-translators-panel-wrap';
+
+            const popup = this.createPanelPopup();
+            wrapper.appendChild(popup);
+            wrapper.appendChild(button);
+
+            this.panelControlEl = wrapper;
+            this.panelButtonEl = button;
+            this.panelPopupEl = popup;
+            this.panelPopupController = bindPopupClickToggle(wrapper, button, popup, {
+                shouldOpenOnTrigger: () => this.shouldShowPanelControl()
+            });
+
+            panelButtons.insertBefore(wrapper, panelButtons.firstChild);
+            this.rebuildPanelPopup();
+            this.syncPanelControlState();
+            this.updateSelectedTranslatorName();
+        }
+
+        createPanelPopup() {
+            const popup = document.createElement('div');
+            popup.id = 'hdw-translators-panel-popup';
+
+            const header = document.createElement('div');
+            header.className = 'hdw-translators-panel-header';
+
+            const title = document.createElement('div');
+            title.className = 'hdw-translators-panel-title';
+            title.textContent = 'Выбор озвучки';
+
+            const current = document.createElement('div');
+            current.className = 'hdw-translators-panel-current';
+
+            header.appendChild(title);
+            header.appendChild(current);
+            popup.appendChild(header);
+
+            const list = document.createElement('div');
+            list.className = 'hdw-translators-panel-list';
+            popup.appendChild(list);
+
+            this.panelCurrentEl = current;
+            this.panelListEl = list;
+            return popup;
+        }
+
+        rebuildPanelPopup() {
+            if (!this.panelListEl) {
+                return;
+            }
+
+            this.panelListEl.textContent = '';
+            this.getTranslatorItems().forEach((translatorItem) => {
+                this.panelListEl.appendChild(this.createPanelTranslatorButton(translatorItem));
+            });
+        }
+
+        createPanelTranslatorButton(sourceItem) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'hdw-translators-panel-item';
+            button.dataset.translatorId = sourceItem.getAttribute('data-translator_id') || '';
+            button.textContent = sourceItem.textContent.replace(/\s+/g, ' ').trim() || 'Без названия';
+            button.classList.toggle('hdw-active', sourceItem.classList.contains('active'));
+            button.title = sourceItem.getAttribute('title') || button.textContent;
+            button.addEventListener('click', () => {
+                if (sourceItem.classList.contains('active')) {
+                    this.panelPopupController?.close();
+                    return;
+                }
+
+                const targetHref = sourceItem.getAttribute('href') || sourceItem.href || '';
+                this.panelPopupController?.close();
+                if (targetHref) {
+                    window.location.assign(targetHref);
+                    return;
+                }
+
+                sourceItem.click();
+            });
+            return button;
+        }
+
+        syncPanelControlState() {
+            if (!this.panelControlEl) {
+                return;
+            }
+
+            const shouldShow = this.shouldShowPanelControl();
+            this.panelControlEl.hidden = !shouldShow;
+            if (!shouldShow) {
+                this.panelPopupController?.close();
+                return;
+            }
+
+            const panelButtons = this.panelControlEl.parentElement;
+            if (panelButtons && panelButtons.firstChild !== this.panelControlEl) {
+                panelButtons.insertBefore(this.panelControlEl, panelButtons.firstChild);
+            }
+
+            if (!this.panelListEl || this.panelListEl.childElementCount !== this.getTranslatorCount()) {
+                this.rebuildPanelPopup();
+            }
+
+            const activeId = this.blockEl?.querySelector('.b-translator__item.active')?.getAttribute('data-translator_id') || '';
+            this.panelListEl?.querySelectorAll('.hdw-translators-panel-item').forEach((button) => {
+                button.classList.toggle('hdw-active', button.dataset.translatorId === activeId);
+            });
+        }
+
         setTheaterMode(active) {
             this.isTheaterMode = !!active;
             if (this.isTheaterMode) {
                 this.setExpanded(false);
             }
+            this.syncPanelControlState();
+            this.updateSelectedTranslatorName();
         }
     }
 
@@ -4106,4 +4279,5 @@
     global.__HDREZKA_CORE_VERSION__ = HDREZKA_CORE_VERSION;
     global.__HDREZKA_CORE__ = runHdrezkaCore;
 })(typeof globalThis !== 'undefined' ? globalThis : window);
+
 

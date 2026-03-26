@@ -13,6 +13,7 @@ Prepared icons:
 - `video-blur.svg`
 - `video-mirror.svg`
 - `playback-overlay.svg`
+- `translator-audio.svg`
 
 Guidelines:
 - `viewBox="0 0 24 24"`
