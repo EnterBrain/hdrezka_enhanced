@@ -42,6 +42,7 @@
         features: {
             progressTracking: true,
             dubSelection: true,
+            nestedDubUrlGrouping: true,
             seasonEpisodeSelection: true,
             cloudSync: false,
             notifications: true
@@ -89,11 +90,121 @@
         const remainingSeconds = Math.floor(seconds % 60);
         return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
     }
+
+    function getCleanUrlString(url) {
+        return String(url || '').split('#')[0].split('?')[0];
+    }
+
+    function getPagePath(url) {
+        const cleanUrl = getCleanUrlString(url);
+        if (!cleanUrl) {
+            return '';
+        }
+
+        try {
+            return new URL(cleanUrl, window.location.origin).pathname;
+        } catch (error) {
+            return cleanUrl;
+        }
+    }
+
+    function getRezkaPathMeta(url) {
+        const rawUrl = String(url || '').trim();
+        if (!rawUrl) {
+            return null;
+        }
+
+        try {
+            const parsedUrl = new URL(rawUrl, window.location.origin);
+            const pathname = parsedUrl.pathname || '/';
+            const match = pathname.match(/^\/(films|series|cartoons|animation)\/([^/]+)\/([^/]+?)(?:\/([^/]+))?\/?$/i);
+            if (!match) {
+                return {
+                    pathname,
+                    canonicalPath: pathname,
+                    hasNestedDubPath: false,
+                    nestedSlug: '',
+                    isContentPath: false
+                };
+            }
+
+            const [, section, genre, rawSlug, nestedSlug = ''] = match;
+            const normalizedSlug = rawSlug.replace(/\.html$/i, '');
+            return {
+                pathname,
+                section,
+                genre,
+                slug: normalizedSlug,
+                canonicalPath: `/${section}/${genre}/${normalizedSlug}`,
+                hasNestedDubPath: !!nestedSlug,
+                nestedSlug,
+                isContentPath: true
+            };
+        } catch (error) {
+            const fallbackPath = getCleanUrlString(rawUrl);
+            return {
+                pathname: fallbackPath,
+                canonicalPath: fallbackPath,
+                hasNestedDubPath: false,
+                nestedSlug: '',
+                isContentPath: false
+            };
+        }
+    }
+
+    function isNestedDubPathModeEnabled() {
+        return !!config.features.nestedDubUrlGrouping;
+    }
+
+    function hasNestedDubSelectionUrls() {
+        if (!isNestedDubPathModeEnabled()) {
+            return false;
+        }
+
+        const currentMeta = getRezkaPathMeta(window.location.href);
+        if (currentMeta?.hasNestedDubPath) {
+            return true;
+        }
+
+        const currentCanonicalPath = currentMeta?.canonicalPath || '';
+        const translatorLinks = Array.from(document.querySelectorAll('.b-translator__item[href], .b-translator__item a[href]'));
+        return translatorLinks.some((element) => {
+            const href = element.getAttribute('href');
+            if (!href) {
+                return false;
+            }
+
+            const meta = getRezkaPathMeta(href);
+            if (!meta?.hasNestedDubPath) {
+                return false;
+            }
+
+            return !currentCanonicalPath || meta.canonicalPath === currentCanonicalPath;
+        });
+    }
+
+    function getCurrentDubSelectionUrl(activeDubElement = null) {
+        if (!hasNestedDubSelectionUrls()) {
+            return '';
+        }
+
+        const candidateElement = activeDubElement || document.querySelector('.b-translator__item.active');
+        const hrefCandidate = candidateElement?.getAttribute('href')
+            || candidateElement?.querySelector?.('a[href]')?.getAttribute('href')
+            || '';
+
+        const rawUrl = hrefCandidate || window.location.href;
+        try {
+            return new URL(getCleanUrlString(rawUrl), window.location.origin).href;
+        } catch (error) {
+            return getCleanUrlString(rawUrl);
+        }
+    }
     
     // Функция для формирования URL с якорем позиции воспроизведения
     function buildItemUrlWithAnchor(item) {
         // Формируем URL с якорем позиции воспроизведения
-        let itemUrl = normalizeUrl(item.url);
+        let itemUrl = getPagePath(item?.dub?.url || '') || getPagePath(item?.url || '');
         
         // Проверяем и приводим ID к целым числам, если они не являются таковыми
         const dubId = item.dub && item.dub.id ? parseInt(item.dub.id, 10) : null;
@@ -113,16 +224,26 @@
     function normalizeUrl(url) {
         try {
             // Удаляем хэш и параметры запроса
-            const cleanUrl = url.split('#')[0].split('?')[0];
+            const cleanUrl = getCleanUrlString(url);
             
             // Создаем объект URL для парсинга
-            const urlObj = new URL(cleanUrl);
+            const urlObj = new URL(cleanUrl, window.location.origin);
             
+            const meta = getRezkaPathMeta(urlObj.pathname);
+            if (isNestedDubPathModeEnabled() && meta?.isContentPath && meta.canonicalPath) {
+                return meta.canonicalPath;
+            }
+
             // Возвращаем только путь от корня домена
             return urlObj.pathname;
         } catch (error) {
+            const meta = getRezkaPathMeta(url);
+            if (isNestedDubPathModeEnabled() && meta?.isContentPath && meta.canonicalPath) {
+                return meta.canonicalPath;
+            }
+
             // Если не удалось распарсить URL, возвращаем оригинальный путь без параметров
-            return url.split('#')[0].split('?')[0];
+            return getCleanUrlString(url);
         }
     }
 
@@ -444,9 +565,11 @@
             debugLog('[MovieParser] Активный элемент озвучки:', activeDubElement);
             
             if (activeDubElement) {
+                const dubUrl = getCurrentDubSelectionUrl(activeDubElement);
                 const dubInfo = {
                     id: activeDubElement.getAttribute('data-translator_id'),
-                    name: activeDubElement.textContent.trim()
+                    name: activeDubElement.textContent.trim(),
+                    url: dubUrl || null
                 };
                 debugLog('[MovieParser] Информация об озвучке получена:', dubInfo);
                 return dubInfo;
@@ -456,7 +579,8 @@
             debugLog('[MovieParser] Информация об озвучке не найдена, возвращаем значения по умолчанию');
             return {
                 id: null,
-                name: 'Не выбрана'
+                name: 'Не выбрана',
+                url: null
             };
         }
         
@@ -2724,6 +2848,15 @@
             return Array.from(this.listEl.querySelectorAll('.b-translator__item'));
         }
 
+        findTranslatorItemById(translatorId) {
+            const normalizedId = String(translatorId || '').trim();
+            if (!normalizedId || !this.blockEl) {
+                return null;
+            }
+
+            return this.blockEl.querySelector(`.b-translator__item[data-translator_id="${CSS.escape(normalizedId)}"]`);
+        }
+
         getTranslatorCount() {
             return this.getTranslatorItems().length;
         }
@@ -2866,25 +2999,53 @@
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'hdw-translators-panel-item';
-            button.dataset.translatorId = sourceItem.getAttribute('data-translator_id') || '';
+            const translatorId = sourceItem.getAttribute('data-translator_id') || '';
+            let lastActivationAt = 0;
+            button.dataset.translatorId = translatorId;
             button.textContent = sourceItem.textContent.replace(/\s+/g, ' ').trim() || 'Без названия';
             button.classList.toggle('hdw-active', sourceItem.classList.contains('active'));
             button.title = sourceItem.getAttribute('title') || button.textContent;
-            button.addEventListener('click', () => {
-                if (sourceItem.classList.contains('active')) {
+            const activateTranslator = (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+
+                const now = Date.now();
+                if (now - lastActivationAt < 350) {
+                    return;
+                }
+                lastActivationAt = now;
+
+                const activeTranslatorId = this.blockEl?.querySelector('.b-translator__item.active')?.getAttribute('data-translator_id') || '';
+                if (translatorId && translatorId === activeTranslatorId) {
                     this.panelPopupController?.close();
                     return;
                 }
 
-                const targetHref = sourceItem.getAttribute('href') || sourceItem.href || '';
+                const currentSourceItem = this.findTranslatorItemById(translatorId) || sourceItem;
+                const targetHref = currentSourceItem.getAttribute('href')
+                    || currentSourceItem.href
+                    || currentSourceItem.querySelector?.('a[href]')?.href
+                    || '';
+
                 this.panelPopupController?.close();
                 if (targetHref) {
                     window.location.assign(targetHref);
                     return;
                 }
 
-                sourceItem.click();
+                currentSourceItem.dispatchEvent(new MouseEvent('click', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window
+                }));
+            };
+
+            button.addEventListener('pointerdown', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
             });
+            button.addEventListener('pointerup', activateTranslator);
+            button.addEventListener('click', activateTranslator);
             return button;
         }
 
