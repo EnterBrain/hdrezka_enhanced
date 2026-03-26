@@ -200,6 +200,109 @@
             return getCleanUrlString(rawUrl);
         }
     }
+
+    function getTranslatorItemHref(item) {
+        if (!item) {
+            return '';
+        }
+
+        return item.getAttribute('href')
+            || item.href
+            || item.querySelector?.('a[href]')?.href
+            || '';
+    }
+
+    function getTranslatorItemPath(item) {
+        return getPagePath(getTranslatorItemHref(item));
+    }
+
+    function getTranslatorOptionKey(item) {
+        if (!item) {
+            return '';
+        }
+
+        const translatorId = item.getAttribute('data-translator_id') || '';
+        const directorFlag = item.getAttribute('data-director') || '0';
+        const itemPath = getTranslatorItemPath(item);
+        return itemPath || `${translatorId}|${directorFlag}|${(item.textContent || '').replace(/\s+/g, ' ').trim()}`;
+    }
+
+    function extractTranslatorInfo(item) {
+        if (!item) {
+            return {
+                id: null,
+                name: 'Не выбрана',
+                title: 'Не выбрана',
+                url: null,
+                path: '',
+                optionKey: '',
+                translatorId: null,
+                contentId: null,
+                camrip: null,
+                ads: null,
+                director: null,
+                cdnQuality: '',
+                isDirector: false,
+                isActive: false,
+                dataset: {}
+            };
+        }
+
+        const dataset = { ...(item.dataset || {}) };
+        const name = (item.textContent || '').replace(/\s+/g, ' ').trim() || 'Не выбрана';
+        const title = item.getAttribute('title') || name;
+        const url = getCurrentDubSelectionUrl(item) || getTranslatorItemHref(item) || null;
+        const path = getTranslatorItemPath(item);
+        const translatorId = item.getAttribute('data-translator_id');
+        const director = item.getAttribute('data-director');
+
+        return {
+            id: translatorId,
+            name,
+            title,
+            url,
+            path,
+            optionKey: getTranslatorOptionKey(item),
+            translatorId,
+            contentId: item.getAttribute('data-id'),
+            camrip: item.getAttribute('data-camrip'),
+            ads: item.getAttribute('data-ads'),
+            director,
+            cdnQuality: item.getAttribute('data-cdn_quality') || '',
+            isDirector: director === '1',
+            isActive: item.classList.contains('active'),
+            dataset
+        };
+    }
+
+    function findActiveTranslatorItem(root = document) {
+        const items = Array.from(root.querySelectorAll('.b-translator__item'));
+        if (!items.length) {
+            return null;
+        }
+
+        const currentPath = getPagePath(window.location.href);
+        if (currentPath) {
+            const exactPathMatch = items.find((item) => getTranslatorItemPath(item) === currentPath);
+            if (exactPathMatch) {
+                return exactPathMatch;
+            }
+        }
+
+        const activeItems = items.filter((item) => item.classList.contains('active'));
+        if (activeItems.length === 1) {
+            return activeItems[0];
+        }
+
+        if (activeItems.length > 1 && currentPath) {
+            const activePathMatch = activeItems.find((item) => getTranslatorItemPath(item) === currentPath);
+            if (activePathMatch) {
+                return activePathMatch;
+            }
+        }
+
+        return activeItems[0] || items[0] || null;
+    }
     
     // Функция для формирования URL с якорем позиции воспроизведения
     function buildItemUrlWithAnchor(item) {
@@ -561,27 +664,18 @@
         static parseDubInfo() {
             debugLog('[MovieParser] Парсинг информации об озвучке');
             // Получаем активную озвучку
-            const activeDubElement = document.querySelector('.b-translator__item.active');
+            const activeDubElement = findActiveTranslatorItem(document);
             debugLog('[MovieParser] Активный элемент озвучки:', activeDubElement);
             
             if (activeDubElement) {
-                const dubUrl = getCurrentDubSelectionUrl(activeDubElement);
-                const dubInfo = {
-                    id: activeDubElement.getAttribute('data-translator_id'),
-                    name: activeDubElement.textContent.trim(),
-                    url: dubUrl || null
-                };
+                const dubInfo = extractTranslatorInfo(activeDubElement);
                 debugLog('[MovieParser] Информация об озвучке получена:', dubInfo);
                 return dubInfo;
             }
             
             // Если не удалось получить информацию об озвучке, возвращаем значения по умолчанию
             debugLog('[MovieParser] Информация об озвучке не найдена, возвращаем значения по умолчанию');
-            return {
-                id: null,
-                name: 'Не выбрана',
-                url: null
-            };
+            return extractTranslatorInfo(null);
         }
         
         static parseSeasonInfo() {
@@ -2857,6 +2951,15 @@
             return this.blockEl.querySelector(`.b-translator__item[data-translator_id="${CSS.escape(normalizedId)}"]`);
         }
 
+        findTranslatorItemByKey(optionKey) {
+            const normalizedKey = String(optionKey || '').trim();
+            if (!normalizedKey || !this.blockEl) {
+                return null;
+            }
+
+            return this.getTranslatorItems().find((item) => getTranslatorOptionKey(item) === normalizedKey) || null;
+        }
+
         getTranslatorCount() {
             return this.getTranslatorItems().length;
         }
@@ -2870,7 +2973,7 @@
                 return 'Не выбрана';
             }
 
-            const activeTranslator = this.blockEl.querySelector('.b-translator__item.active');
+            const activeTranslator = findActiveTranslatorItem(this.blockEl);
             if (!activeTranslator) {
                 return 'Не выбрана';
             }
@@ -3000,10 +3103,12 @@
             button.type = 'button';
             button.className = 'hdw-translators-panel-item';
             const translatorId = sourceItem.getAttribute('data-translator_id') || '';
+            const translatorKey = getTranslatorOptionKey(sourceItem);
             let lastActivationAt = 0;
             button.dataset.translatorId = translatorId;
+            button.dataset.translatorKey = translatorKey;
             button.textContent = sourceItem.textContent.replace(/\s+/g, ' ').trim() || 'Без названия';
-            button.classList.toggle('hdw-active', sourceItem.classList.contains('active'));
+            button.classList.toggle('hdw-active', translatorKey === getTranslatorOptionKey(findActiveTranslatorItem(this.blockEl)));
             button.title = sourceItem.getAttribute('title') || button.textContent;
             const activateTranslator = (event) => {
                 event.preventDefault();
@@ -3015,17 +3120,16 @@
                 }
                 lastActivationAt = now;
 
-                const activeTranslatorId = this.blockEl?.querySelector('.b-translator__item.active')?.getAttribute('data-translator_id') || '';
-                if (translatorId && translatorId === activeTranslatorId) {
+                const activeTranslatorKey = getTranslatorOptionKey(findActiveTranslatorItem(this.blockEl));
+                if (translatorKey && translatorKey === activeTranslatorKey) {
                     this.panelPopupController?.close();
                     return;
                 }
 
-                const currentSourceItem = this.findTranslatorItemById(translatorId) || sourceItem;
-                const targetHref = currentSourceItem.getAttribute('href')
-                    || currentSourceItem.href
-                    || currentSourceItem.querySelector?.('a[href]')?.href
-                    || '';
+                const currentSourceItem = this.findTranslatorItemByKey(translatorKey)
+                    || this.findTranslatorItemById(translatorId)
+                    || sourceItem;
+                const targetHref = getTranslatorItemHref(currentSourceItem);
 
                 this.panelPopupController?.close();
                 if (targetHref) {
@@ -3070,9 +3174,9 @@
                 this.rebuildPanelPopup();
             }
 
-            const activeId = this.blockEl?.querySelector('.b-translator__item.active')?.getAttribute('data-translator_id') || '';
+            const activeKey = getTranslatorOptionKey(findActiveTranslatorItem(this.blockEl));
             this.panelListEl?.querySelectorAll('.hdw-translators-panel-item').forEach((button) => {
-                button.classList.toggle('hdw-active', button.dataset.translatorId === activeId);
+                button.classList.toggle('hdw-active', button.dataset.translatorKey === activeKey);
             });
         }
 
