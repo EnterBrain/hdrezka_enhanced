@@ -163,7 +163,7 @@
 
     function fetchCoreCssText() {
         const baseUrl = getCoreBootstrapBaseUrl();
-        const url = baseUrl ? `${baseUrl}${CORE_CSS_ASSET_PATH}` : '';
+        const url = baseUrl ? `${baseUrl}${CORE_CSS_ASSET_PATH}?ts=${Date.now()}` : '';
         if (!url) {
             return Promise.resolve('');
         }
@@ -174,6 +174,10 @@
                 request({
                     method: 'GET',
                     url,
+                    headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        Pragma: 'no-cache'
+                    },
                     onload: (response) => resolve(String(response?.responseText || '')),
                     onerror: () => resolve(''),
                     ontimeout: () => resolve('')
@@ -210,22 +214,31 @@
     }
 
     function ensureCoreStyles() {
-        const bundledCss = getBundledCoreCssText();
-        if (bundledCss) {
-            applyCoreStyles(bundledCss);
-            return;
-        }
-
         fetchCoreCssText()
             .then((cssText) => {
-                if (!cssText) {
+                if (cssText) {
+                    applyCoreStyles(cssText);
+                    return;
+                }
+
+                const bundledCss = getBundledCoreCssText();
+                if (!bundledCss) {
                     console.warn('[HDRezka Core] CSS-ассет не загружен, встроенный fallback отсутствует.');
                     return;
                 }
-                applyCoreStyles(cssText);
+
+                console.warn('[HDRezka Core] Онлайн-загрузка CSS неуспешна, fallback на @resource.');
+                applyCoreStyles(bundledCss);
             })
             .catch(() => {
-                console.warn('[HDRezka Core] Ошибка загрузки CSS-ассета.');
+                const bundledCss = getBundledCoreCssText();
+                if (!bundledCss) {
+                    console.warn('[HDRezka Core] Ошибка загрузки CSS-ассета, встроенный fallback отсутствует.');
+                    return;
+                }
+
+                console.warn('[HDRezka Core] Ошибка загрузки CSS-ассета, fallback на @resource.');
+                applyCoreStyles(bundledCss);
             });
     }
 
