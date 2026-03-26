@@ -324,6 +324,57 @@
 
         return items.find((item) => item.classList.contains('active')) || items[0] || null;
     }
+
+    function getEpisodeItemId(item) {
+        return item?.getAttribute?.('data-episode_id') || '';
+    }
+
+    function getEpisodeOptionKey(item) {
+        if (!item) {
+            return '';
+        }
+
+        const seasonId = item.getAttribute('data-season_id') || '';
+        const episodeId = getEpisodeItemId(item);
+        return (seasonId || episodeId)
+            ? `${seasonId}:${episodeId}`
+            : (item.textContent || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function isElementVisible(element) {
+        if (!element) {
+            return false;
+        }
+
+        if (element.hidden) {
+            return false;
+        }
+
+        if (element.style?.display === 'none') {
+            return false;
+        }
+
+        return window.getComputedStyle(element).display !== 'none';
+    }
+
+    function getVisibleEpisodeList(root = document) {
+        const lists = Array.from(root.querySelectorAll('#simple-episodes-tabs .b-simple_episodes__list'));
+        return lists.find((list) => isElementVisible(list)) || lists[0] || null;
+    }
+
+    function findActiveEpisodeItem(root = document) {
+        const visibleList = getVisibleEpisodeList(root);
+        const visibleItems = visibleList
+            ? Array.from(visibleList.querySelectorAll('.b-simple_episode__item'))
+            : [];
+        const visibleActiveItem = visibleItems.find((item) => item.classList.contains('active'));
+        if (visibleActiveItem) {
+            return visibleActiveItem;
+        }
+
+        const allItems = Array.from(root.querySelectorAll('#simple-episodes-tabs .b-simple_episode__item'));
+        return allItems.find((item) => item.classList.contains('active')) || visibleItems[0] || allItems[0] || null;
+    }
     
     // Функция для формирования URL с якорем позиции воспроизведения
     function buildItemUrlWithAnchor(item) {
@@ -3515,13 +3566,368 @@
         }
     }
 
+    class EpisodesPanelModule {
+        constructor() {
+            this.initialized = false;
+            this.rootEl = null;
+            this.panelControlEl = null;
+            this.panelButtonEl = null;
+            this.panelPopupEl = null;
+            this.panelCurrentEl = null;
+            this.panelListEl = null;
+            this.panelPopupController = null;
+            this.isTheaterMode = false;
+            this.mutationObserver = null;
+            this.observerRaf = null;
+            this.centerEpisodeRaf = null;
+        }
+
+        init() {
+            if (this.initialized) {
+                return;
+            }
+
+            this.rootEl = document.getElementById('simple-episodes-tabs');
+            if (!this.rootEl) {
+                return;
+            }
+
+            this.initialized = true;
+            this.ensurePanelControl();
+            this.bindEvents();
+            this.bindObserver();
+            this.syncPanelControlState();
+            this.updateSelectedEpisodeName();
+        }
+
+        bindEvents() {
+            if (!this.rootEl) {
+                return;
+            }
+
+            this.rootEl.addEventListener('click', (event) => {
+                const episodeItem = event.target.closest('.b-simple_episode__item');
+                if (!episodeItem) {
+                    return;
+                }
+
+                requestAnimationFrame(() => {
+                    this.updateSelectedEpisodeName();
+                    this.syncPanelControlState();
+                    this.scheduleCenterActiveEpisodeInPopup();
+                });
+            });
+        }
+
+        bindObserver() {
+            if (!this.rootEl || this.mutationObserver) {
+                return;
+            }
+
+            this.mutationObserver = new MutationObserver(() => {
+                if (this.observerRaf) {
+                    return;
+                }
+
+                this.observerRaf = requestAnimationFrame(() => {
+                    this.observerRaf = null;
+                    this.ensureRootReference();
+                    this.updateSelectedEpisodeName();
+                    this.rebuildPanelPopup();
+                    this.syncPanelControlState();
+                    this.scheduleCenterActiveEpisodeInPopup();
+                });
+            });
+
+            this.mutationObserver.observe(this.rootEl, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['class', 'style', 'data-episode_id', 'data-season_id']
+            });
+        }
+
+        ensureRootReference() {
+            const nextRootEl = document.getElementById('simple-episodes-tabs');
+            if (!nextRootEl || nextRootEl === this.rootEl) {
+                return;
+            }
+
+            this.rootEl = nextRootEl;
+        }
+
+        getEpisodeItems() {
+            const visibleList = getVisibleEpisodeList(this.rootEl || document);
+            if (!visibleList) {
+                return [];
+            }
+
+            return Array.from(visibleList.querySelectorAll('.b-simple_episode__item'));
+        }
+
+        findEpisodeItemByIds(seasonId, episodeId) {
+            const normalizedSeasonId = String(seasonId || '').trim();
+            const normalizedEpisodeId = String(episodeId || '').trim();
+            if (!normalizedEpisodeId || !this.rootEl) {
+                return null;
+            }
+
+            if (normalizedSeasonId) {
+                return this.rootEl.querySelector(`.b-simple_episode__item[data-season_id="${CSS.escape(normalizedSeasonId)}"][data-episode_id="${CSS.escape(normalizedEpisodeId)}"]`);
+            }
+
+            return this.rootEl.querySelector(`.b-simple_episode__item[data-episode_id="${CSS.escape(normalizedEpisodeId)}"]`);
+        }
+
+        findEpisodeItemByKey(optionKey) {
+            const normalizedKey = String(optionKey || '').trim();
+            if (!normalizedKey) {
+                return null;
+            }
+
+            return this.getEpisodeItems().find((item) => getEpisodeOptionKey(item) === normalizedKey) || null;
+        }
+
+        getEpisodeCount() {
+            return this.getEpisodeItems().length;
+        }
+
+        shouldShowPanelControl() {
+            return this.isTheaterMode && this.getEpisodeCount() > 1;
+        }
+
+        getActiveEpisodeName() {
+            const activeEpisode = findActiveEpisodeItem(this.rootEl || document);
+            const episodeName = activeEpisode?.textContent?.replace(/\s+/g, ' ').trim();
+            return episodeName || 'Не выбрана';
+        }
+
+        updateSelectedEpisodeName() {
+            const activeName = this.getActiveEpisodeName();
+
+            if (this.panelButtonEl) {
+                const label = this.panelButtonEl.querySelector('.hdw-episodes-button-label');
+                if (label) {
+                    label.textContent = activeName;
+                }
+                this.panelButtonEl.title = `Выбрать серию. Сейчас: ${activeName}`;
+            }
+
+            if (this.panelCurrentEl) {
+                this.panelCurrentEl.textContent = `Сейчас: ${activeName}`;
+            }
+        }
+
+        ensurePanelControl() {
+            if (this.panelControlEl) {
+                return;
+            }
+
+            const panelButtons = ensurePlayerControlsPanel();
+            if (!panelButtons) {
+                return;
+            }
+
+            const button = document.createElement('button');
+            button.id = 'player-episodes-toggle-btn';
+            button.type = 'button';
+            button.className = 'hdw-panel-popup-text-trigger';
+            button.innerHTML = '<span class="hdw-episodes-button-label"></span>';
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'hdw-episodes-panel-wrap';
+
+            const popup = this.createPanelPopup();
+            wrapper.appendChild(popup);
+            wrapper.appendChild(button);
+
+            this.panelControlEl = wrapper;
+            this.panelButtonEl = button;
+            this.panelPopupEl = popup;
+            this.panelPopupController = bindPopupClickToggle(wrapper, button, popup, {
+                shouldOpenOnTrigger: () => this.shouldShowPanelControl(),
+                onToggle: (opened) => {
+                    if (opened) {
+                        this.scheduleCenterActiveEpisodeInPopup();
+                    }
+                }
+            });
+
+            panelButtons.insertBefore(wrapper, panelButtons.firstChild);
+            this.rebuildPanelPopup();
+            this.syncPanelControlState();
+            this.updateSelectedEpisodeName();
+        }
+
+        createPanelPopup() {
+            const popup = document.createElement('div');
+            popup.id = 'hdw-episodes-panel-popup';
+
+            const header = document.createElement('div');
+            header.className = 'hdw-translators-panel-header';
+
+            const title = document.createElement('div');
+            title.className = 'hdw-translators-panel-title';
+            title.textContent = 'Выбор серии';
+
+            const current = document.createElement('div');
+            current.className = 'hdw-translators-panel-current';
+
+            header.appendChild(title);
+            header.appendChild(current);
+            popup.appendChild(header);
+
+            const list = document.createElement('div');
+            list.className = 'hdw-translators-panel-list';
+            popup.appendChild(list);
+
+            this.panelCurrentEl = current;
+            this.panelListEl = list;
+            return popup;
+        }
+
+        rebuildPanelPopup() {
+            if (!this.panelListEl) {
+                return;
+            }
+
+            this.panelListEl.textContent = '';
+            this.getEpisodeItems().forEach((episodeItem) => {
+                this.panelListEl.appendChild(this.createPanelEpisodeButton(episodeItem));
+            });
+        }
+
+        createPanelEpisodeButton(sourceItem) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'hdw-translators-panel-item';
+            const seasonId = sourceItem.getAttribute('data-season_id') || '';
+            const episodeId = getEpisodeItemId(sourceItem);
+            const episodeKey = getEpisodeOptionKey(sourceItem);
+            let lastActivationAt = 0;
+            button.dataset.seasonId = seasonId;
+            button.dataset.episodeId = episodeId;
+            button.dataset.episodeKey = episodeKey;
+            button.textContent = sourceItem.textContent.replace(/\s+/g, ' ').trim() || 'Без названия';
+            button.classList.toggle('hdw-active', episodeKey === getEpisodeOptionKey(findActiveEpisodeItem(this.rootEl || document)));
+            button.title = button.textContent;
+
+            const activateEpisode = (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+
+                const now = Date.now();
+                if (now - lastActivationAt < 350) {
+                    return;
+                }
+                lastActivationAt = now;
+
+                const activeEpisodeKey = getEpisodeOptionKey(findActiveEpisodeItem(this.rootEl || document));
+                if (episodeKey && episodeKey === activeEpisodeKey) {
+                    this.panelPopupController?.close();
+                    return;
+                }
+
+                const currentSourceItem = this.findEpisodeItemByKey(episodeKey)
+                    || this.findEpisodeItemByIds(seasonId, episodeId)
+                    || sourceItem;
+
+                this.panelPopupController?.close();
+                currentSourceItem.dispatchEvent(new MouseEvent('click', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window
+                }));
+            };
+
+            button.addEventListener('pointerdown', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+            });
+            button.addEventListener('pointerup', activateEpisode);
+            button.addEventListener('click', activateEpisode);
+            return button;
+        }
+
+        scheduleCenterActiveEpisodeInPopup() {
+            if (!this.panelPopupController?.isOpen() || !this.panelListEl) {
+                return;
+            }
+
+            if (this.centerEpisodeRaf) {
+                cancelAnimationFrame(this.centerEpisodeRaf);
+            }
+
+            this.centerEpisodeRaf = requestAnimationFrame(() => {
+                this.centerEpisodeRaf = null;
+                this.centerActiveEpisodeInPopup();
+            });
+        }
+
+        centerActiveEpisodeInPopup() {
+            if (!this.panelListEl) {
+                return;
+            }
+
+            const activeButton = this.panelListEl.querySelector('.hdw-translators-panel-item.hdw-active');
+            if (!activeButton) {
+                return;
+            }
+
+            const targetScrollTop = activeButton.offsetTop - (this.panelListEl.clientHeight / 2) + (activeButton.offsetHeight / 2);
+            const maxScrollTop = Math.max(0, this.panelListEl.scrollHeight - this.panelListEl.clientHeight);
+            this.panelListEl.scrollTop = Math.max(0, Math.min(targetScrollTop, maxScrollTop));
+        }
+
+        syncPanelControlState() {
+            if (!this.panelControlEl) {
+                return;
+            }
+
+            const shouldShow = this.shouldShowPanelControl();
+            this.panelControlEl.hidden = !shouldShow;
+            if (!shouldShow) {
+                this.panelPopupController?.close();
+                return;
+            }
+
+            const panelButtons = this.panelControlEl.parentElement;
+            const seasonsControl = panelButtons?.querySelector('.hdw-seasons-panel-wrap');
+            const translatorsControl = panelButtons?.querySelector('.hdw-translators-panel-wrap');
+            if (panelButtons && seasonsControl && seasonsControl.nextSibling !== this.panelControlEl) {
+                panelButtons.insertBefore(this.panelControlEl, seasonsControl.nextSibling);
+            } else if (panelButtons && !seasonsControl && translatorsControl && translatorsControl.nextSibling !== this.panelControlEl) {
+                panelButtons.insertBefore(this.panelControlEl, translatorsControl.nextSibling);
+            } else if (panelButtons && !seasonsControl && !translatorsControl && panelButtons.firstChild !== this.panelControlEl) {
+                panelButtons.insertBefore(this.panelControlEl, panelButtons.firstChild);
+            }
+
+            if (!this.panelListEl || this.panelListEl.childElementCount !== this.getEpisodeCount()) {
+                this.rebuildPanelPopup();
+            }
+
+            const activeKey = getEpisodeOptionKey(findActiveEpisodeItem(this.rootEl || document));
+            this.panelListEl?.querySelectorAll('.hdw-translators-panel-item').forEach((button) => {
+                button.classList.toggle('hdw-active', button.dataset.episodeKey === activeKey);
+            });
+            this.scheduleCenterActiveEpisodeInPopup();
+        }
+
+        setTheaterMode(active) {
+            this.isTheaterMode = !!active;
+            this.syncPanelControlState();
+            this.updateSelectedEpisodeName();
+        }
+    }
+
     class TheaterModeModule {
-        constructor(audioCompressor, videoEffects, playbackInfoOverlay, translatorsPanel, seasonsPanel) {
+        constructor(audioCompressor, videoEffects, playbackInfoOverlay, translatorsPanel, seasonsPanel, episodesPanel) {
             this.audioCompressor = audioCompressor;
             this.videoEffects = videoEffects;
             this.playbackInfoOverlay = playbackInfoOverlay;
             this.translatorsPanel = translatorsPanel;
             this.seasonsPanel = seasonsPanel;
+            this.episodesPanel = episodesPanel;
             this.isActive = false;
             const storedAspectRatioMode = GM_getValue(config.aspectRatioStorageKey, '16:9');
             this.aspectRatioMode = this.normalizeAspectRatioMode(storedAspectRatioMode);
@@ -3533,6 +3939,7 @@
             this.layoutRaf = null;
             this.hotkeysHandler = null;
             this.hiddenSimpleSeasonsTabsByTheater = false;
+            this.hiddenSimpleEpisodesTabsByTheater = false;
             this.initialized = false;
         }
 
@@ -3555,6 +3962,7 @@
             }
             this.translatorsPanel?.init();
             this.seasonsPanel?.init();
+            this.episodesPanel?.init();
             this.bindHotkeys();
             this.updateButtonState();
             this.updateAspectRatioButtonState();
@@ -3852,9 +4260,7 @@
             }
 
             if (shouldHide) {
-                const seasonItems = tabs.querySelectorAll('li.b-simple_season__item');
-                const shouldHideTabs = seasonItems.length === 1 && seasonItems[0].classList.contains('active');
-                if (!shouldHideTabs || this.hiddenSimpleSeasonsTabsByTheater) {
+                if (this.hiddenSimpleSeasonsTabsByTheater) {
                     return;
                 }
 
@@ -3877,6 +4283,36 @@
             this.hiddenSimpleSeasonsTabsByTheater = false;
         }
 
+        toggleSimpleEpisodesTabsForTheater(shouldHide) {
+            const tabs = document.getElementById('simple-episodes-tabs');
+            if (!tabs) {
+                return;
+            }
+
+            if (shouldHide) {
+                if (this.hiddenSimpleEpisodesTabsByTheater) {
+                    return;
+                }
+
+                tabs.dataset.hdwTheaterPrevDisplay = tabs.style.display || '';
+                tabs.style.display = 'none';
+                this.hiddenSimpleEpisodesTabsByTheater = true;
+                return;
+            }
+
+            if (!this.hiddenSimpleEpisodesTabsByTheater) {
+                return;
+            }
+
+            if (Object.prototype.hasOwnProperty.call(tabs.dataset, 'hdwTheaterPrevDisplay')) {
+                tabs.style.display = tabs.dataset.hdwTheaterPrevDisplay;
+                delete tabs.dataset.hdwTheaterPrevDisplay;
+            } else {
+                tabs.style.removeProperty('display');
+            }
+            this.hiddenSimpleEpisodesTabsByTheater = false;
+        }
+
         enableTheaterMode() {
             const playerBlock = document.querySelector('#player')?.closest('div[class^="b-post__"]');
             if (!playerBlock) {
@@ -3889,12 +4325,14 @@
             this.isActive = true;
             this.translatorsPanel?.setTheaterMode(true);
             this.seasonsPanel?.setTheaterMode(true);
+            this.episodesPanel?.setTheaterMode(true);
             this.bindTheaterLayoutListeners();
             this.updateTheaterLayoutVars();
             this.scheduleTheaterLayout();
             setTimeout(() => this.updateTheaterLayoutVars(), 0);
             setTimeout(() => this.updateTheaterLayoutVars(), 120);
             this.toggleSimpleSeasonsTabsForTheater(true);
+            this.toggleSimpleEpisodesTabsForTheater(true);
             this.updateButtonState();
         }
 
@@ -3906,6 +4344,7 @@
             this.isActive = false;
             this.translatorsPanel?.setTheaterMode(false);
             this.seasonsPanel?.setTheaterMode(false);
+            this.episodesPanel?.setTheaterMode(false);
             this.unbindTheaterLayoutListeners();
             document.body.style.removeProperty('--hdw-top-offset');
             document.body.style.removeProperty('--hdw-bottom-offset');
@@ -3917,6 +4356,7 @@
             document.body.style.removeProperty('--hdw-player-aspect-ratio');
             this.applyAspectRatioCssVar();
             this.toggleSimpleSeasonsTabsForTheater(false);
+            this.toggleSimpleEpisodesTabsForTheater(false);
             this.updateButtonState();
             this.updateAspectRatioButtonState();
         }
@@ -3974,13 +4414,15 @@
 
     const translatorsPanel = new TranslatorsPanelModule();
     const seasonsPanel = new SeasonsPanelModule();
+    const episodesPanel = new EpisodesPanelModule();
 
     const playerEnhancements = new TheaterModeModule(
         new AudioCompressorModule(config.compressorStorageKey, config.compressorSettingsStorageKey),
         new VideoEffectsModule(),
         new PlaybackInfoOverlayModule(config.overlayStorageKey, config.overlayDisplayStorageKey),
         translatorsPanel,
-        seasonsPanel
+        seasonsPanel,
+        episodesPanel
     );
 
     // Интерфейс
