@@ -2048,10 +2048,11 @@
 
         body.hdw-theater-mode {
             overflow: hidden !important;
-            --hdw-top-offset: 10px;
-            --hdw-bottom-offset: 10px;
+            --hdw-top-offset: 0px;
+            --hdw-bottom-offset: 0px;
+            --hdw-side-offset: 0px;
             --hdw-gap: 0px;
-            --hdw-translators-height: 52px;
+            --hdw-translators-height: 0px;
             --hdw-player-available-height: calc(100vh - var(--hdw-top-offset) - var(--hdw-bottom-offset) - var(--hdw-translators-height) - var(--hdw-gap) * 2);
             --hdw-player-chrome-height: 48px;
             --hdw-player-box-height: calc(var(--hdw-player-available-height) - var(--hdw-player-chrome-height));
@@ -2079,17 +2080,18 @@
 
         body.hdw-theater-mode .hdw-theater-player-block {
             position: fixed !important;
-            top: calc(var(--hdw-top-offset) + var(--hdw-translators-height) + var(--hdw-gap)) !important;
-            left: 50% !important;
-            transform: translateX(-50%) !important;
-            width: 96vw !important;
+            top: calc(var(--hdw-top-offset) + var(--hdw-gap)) !important;
+            left: var(--hdw-side-offset) !important;
+            right: var(--hdw-side-offset) !important;
+            transform: none !important;
+            width: auto !important;
             margin: 0 !important;
             z-index: 6000 !important;
             box-sizing: border-box;
             height: var(--hdw-player-available-height) !important;
             overflow: hidden;
             background: rgba(8, 11, 14, 0.42);
-            border-radius: 12px;
+            border-radius: 0 !important;
         }
 
         body.hdw-theater-mode .hdw-theater-player-block > .b-player {
@@ -2241,5 +2243,3 @@
             min-width: 960px !important;
             min-height: 540px !important;
         }
-
-
