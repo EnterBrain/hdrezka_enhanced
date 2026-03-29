@@ -2104,7 +2104,17 @@
             width: 100% !important;
             max-width: none !important;
             margin: 0 !important;
-            z-index: auto !important;
+            z-index: 6100 !important;
+        }
+
+        body.hdw-theater-mode .hdw-translators-panel-wrap.hdw-popup-open,
+        body.hdw-theater-mode .hdw-seasons-panel-wrap.hdw-popup-open,
+        body.hdw-theater-mode .hdw-episodes-panel-wrap.hdw-popup-open,
+        body.hdw-theater-mode .hdw-aspect-ratio-wrap.hdw-popup-open,
+        body.hdw-theater-mode .hdw-watchlist-status-wrap.hdw-popup-open,
+        body.hdw-theater-mode .hdw-compressor-wrap.hdw-popup-open,
+        body.hdw-theater-mode .hdw-overlay-toggle-wrap.hdw-popup-open {
+            z-index: 6200 !important;
         }
 
         body.hdw-theater-mode #cdnplayer-container,
