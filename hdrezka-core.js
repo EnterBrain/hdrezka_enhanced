@@ -117,27 +117,36 @@
         try {
             const parsedUrl = new URL(rawUrl, window.location.origin);
             const pathname = parsedUrl.pathname || '/';
-            const match = pathname.match(/^\/(films|series|cartoons|animation)\/([^/]+)\/([^/]+?)(?:\/([^/]+))?\/?$/i);
+            const match = pathname.match(/^\/(films|series|cartoons|animation)\/([^/]+)\/([^/]+?)(?:\/(.+))?\/?$/i);
             if (!match) {
                 return {
                     pathname,
                     canonicalPath: pathname,
                     hasNestedDubPath: false,
                     nestedSlug: '',
+                    nestedPath: '',
+                    nestedSegments: [],
+                    nestedDepth: 0,
                     isContentPath: false
                 };
             }
 
-            const [, section, genre, rawSlug, nestedSlug = ''] = match;
+            const [, section, genre, rawSlug, nestedPath = ''] = match;
             const normalizedSlug = rawSlug.replace(/\.html$/i, '');
+            const nestedSegments = nestedPath
+                ? nestedPath.split('/').filter(Boolean)
+                : [];
             return {
                 pathname,
                 section,
                 genre,
                 slug: normalizedSlug,
                 canonicalPath: `/${section}/${genre}/${normalizedSlug}`,
-                hasNestedDubPath: !!nestedSlug,
-                nestedSlug,
+                hasNestedDubPath: nestedSegments.length > 0,
+                nestedSlug: nestedSegments[0] || '',
+                nestedPath,
+                nestedSegments,
+                nestedDepth: nestedSegments.length,
                 isContentPath: true
             };
         } catch (error) {
@@ -147,6 +156,9 @@
                 canonicalPath: fallbackPath,
                 hasNestedDubPath: false,
                 nestedSlug: '',
+                nestedPath: '',
+                nestedSegments: [],
+                nestedDepth: 0,
                 isContentPath: false
             };
         }
@@ -156,17 +168,39 @@
         return !!config.features.nestedDubUrlGrouping;
     }
 
+    function areRezkaPathsEquivalent(leftUrl, rightUrl, { includeNestedPath = false } = {}) {
+        const leftMeta = getRezkaPathMeta(leftUrl);
+        const rightMeta = getRezkaPathMeta(rightUrl);
+
+        if (leftMeta?.isContentPath && rightMeta?.isContentPath) {
+            if (leftMeta.canonicalPath !== rightMeta.canonicalPath) {
+                return false;
+            }
+
+            if (!includeNestedPath) {
+                return true;
+            }
+
+            if (leftMeta.nestedDepth !== rightMeta.nestedDepth) {
+                return false;
+            }
+
+            return leftMeta.nestedPath === rightMeta.nestedPath;
+        }
+
+        return getPagePath(leftUrl) === getPagePath(rightUrl);
+    }
+
     function hasNestedDubSelectionUrls() {
         if (!isNestedDubPathModeEnabled()) {
             return false;
         }
 
         const currentMeta = getRezkaPathMeta(window.location.href);
-        if (currentMeta?.hasNestedDubPath) {
+        if ((currentMeta?.nestedDepth || 0) > 0) {
             return true;
         }
 
-        const currentCanonicalPath = currentMeta?.canonicalPath || '';
         const translatorLinks = Array.from(document.querySelectorAll('.b-translator__item[href], .b-translator__item a[href]'));
         return translatorLinks.some((element) => {
             const href = element.getAttribute('href');
@@ -175,11 +209,11 @@
             }
 
             const meta = getRezkaPathMeta(href);
-            if (!meta?.hasNestedDubPath) {
+            if ((meta?.nestedDepth || 0) === 0) {
                 return false;
             }
 
-            return !currentCanonicalPath || meta.canonicalPath === currentCanonicalPath;
+            return !currentMeta?.canonicalPath || areRezkaPathsEquivalent(href, window.location.href);
         });
     }
 
@@ -283,7 +317,7 @@
 
         const currentPath = getPagePath(window.location.href);
         if (currentPath) {
-            const exactPathMatch = items.find((item) => getTranslatorItemPath(item) === currentPath);
+            const exactPathMatch = items.find((item) => areRezkaPathsEquivalent(getTranslatorItemHref(item), currentPath, { includeNestedPath: true }));
             if (exactPathMatch) {
                 return exactPathMatch;
             }
@@ -295,7 +329,7 @@
         }
 
         if (activeItems.length > 1 && currentPath) {
-            const activePathMatch = activeItems.find((item) => getTranslatorItemPath(item) === currentPath);
+            const activePathMatch = activeItems.find((item) => areRezkaPathsEquivalent(getTranslatorItemHref(item), currentPath, { includeNestedPath: true }));
             if (activePathMatch) {
                 return activePathMatch;
             }
